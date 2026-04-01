@@ -1,23 +1,94 @@
-import { MapPin, Phone } from "lucide-react";
+import { MapPin, Phone, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import type { RideRequest } from "@/context/RideContext";
 
 export interface Ride {
   id: string;
   driverName: string;
+  driverEmail?: string;
+  driverPhone?: string;
+  driverRollNumber?: string;
+  driverBranch?: string;
+  driverYear?: string;
   carModel: string;
+  carNumberPlate?: string;
+  carImageUrl?: string;
   from: string;
   to: string;
+  date?: string;
   departureTime: string;
   arrivalTime: string;
-  pricePerMile: string;
+  pricePerSeat: string;
   seats: number;
   eta: string;
   avatar: string;
 }
 
-const RideCard = ({ ride, onRequest }: { ride: Ride; onRequest?: () => void }) => {
+const RideCard = ({
+  ride,
+  onRequest,
+  request,
+}: {
+  ride: Ride;
+  onRequest?: () => void;
+  request?: RideRequest;
+}) => {
   const navigate = useNavigate();
+
+  const getButtonState = () => {
+    if (!request) {
+      return {
+        label: "Request",
+        icon: null,
+        disabled: false,
+        variant: "primary",
+      };
+    }
+
+    if (request.status === "pending") {
+      return {
+        label: "Requested",
+        icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+        disabled: true,
+        variant: "pending",
+      };
+    }
+
+    if (request.status === "approved") {
+      return {
+        label: "Approved",
+        icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+        disabled: true,
+        variant: "success",
+      };
+    }
+
+    if (request.status === "rejected") {
+      return {
+        label: "Request Again",
+        icon: null,
+        disabled: false,
+        variant: "primary",
+      };
+    }
+
+    return {
+      label: "Request",
+      icon: null,
+      disabled: false,
+      variant: "primary",
+    };
+  };
+
+  const buttonState = getButtonState();
+
+  const buttonClasses = {
+    primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+    pending: "bg-yellow-600/20 text-yellow-700 dark:text-yellow-400 cursor-not-allowed opacity-75",
+    success: "bg-primary text-primary-foreground cursor-not-allowed opacity-75",
+  };
+
 
   return (
     <div
@@ -31,19 +102,29 @@ const RideCard = ({ ride, onRequest }: { ride: Ride; onRequest?: () => void }) =
           </div>
           <div>
             <p className="font-semibold text-sm text-foreground">{ride.driverName}</p>
-            <p className="text-[11px] text-muted-foreground">{ride.carModel}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {ride.carModel} {ride.carNumberPlate ? `• ${ride.carNumberPlate}` : ""}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRequest?.();
-            }}
-            className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            Request
-          </button>
+          {onRequest && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!buttonState.disabled) {
+                  onRequest();
+                }
+              }}
+              disabled={buttonState.disabled}
+              className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 ${
+                buttonClasses[buttonState.variant as keyof typeof buttonClasses]
+              }`}
+            >
+              {buttonState.icon}
+              {buttonState.label}
+            </button>
+          )}
           <button
             type="button"
             onClick={(e) => {
@@ -77,8 +158,8 @@ const RideCard = ({ ride, onRequest }: { ride: Ride; onRequest?: () => void }) =
 
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div>
-          <span className="font-bold text-foreground">{ride.pricePerMile}</span>
-          <span className="text-[11px] text-muted-foreground ml-1">per mile</span>
+          <span className="font-bold text-foreground">{ride.pricePerSeat}</span>
+          <span className="text-[11px] text-muted-foreground ml-1">per seat</span>
         </div>
         <div>
           <span className="font-bold text-foreground">{ride.seats}</span>

@@ -21,6 +21,7 @@ const RideDetail = () => {
   const navigate = useNavigate();
   const {
     rides,
+    currentUser,
     sendRequest,
     getRequestForRide,
     sendMessage,
@@ -28,15 +29,25 @@ const RideDetail = () => {
   } = useRideContext();
   const [chatText, setChatText] = useState("");
   const [showChat, setShowChat] = useState(false);
+  const [request, setRequest] = useState<ReturnType<typeof getRequestForRide>>(undefined);
+  const [showSeatSelection, setShowSeatSelection] = useState(false);
+  const [seatsToRequest, setSeatsToRequest] = useState(1);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const ride = rides.find((r) => r.id === id);
-  const request = id ? getRequestForRide(id) : undefined;
   const messages = id ? getMessagesForRide(id) : [];
+  const isRideOwner = ride?.driverEmail === currentUser.email;
+  const canSeePhone = isRideOwner || request?.status === "approved";
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (id) {
+      setRequest(getRequestForRide(id));
+    }
+  }, [id, getRequestForRide]);
 
   if (!ride) {
     return (
@@ -47,8 +58,19 @@ const RideDetail = () => {
   }
 
   const handleRequest = () => {
-    sendRequest(ride.id);
-    toast.success(`Ride request sent to ${ride.driverName}!`);
+    setShowSeatSelection(true);
+  };
+
+  const handleConfirmRequest = () => {
+    const result = sendRequest(ride.id, seatsToRequest);
+    setShowSeatSelection(false);
+    if (result.success) {
+      toast.success(
+        `Requested ${seatsToRequest} ${seatsToRequest === 1 ? "seat" : "seats"} from ${ride.driverName}!`
+      );
+    } else {
+      toast.error(result.message);
+    }
   };
 
   const handleSendMessage = () => {
@@ -58,8 +80,8 @@ const RideDetail = () => {
   };
 
   const handlePhoneClick = () => {
-    if (request?.status !== "approved") {
-      toast.info("Call option unlocks after the ride request is approved.");
+    if (!canSeePhone) {
+      toast.info("Driver number will be visible after your booking is approved.");
       return;
     }
     toast.success(`Calling ${ride.driverName}...`);
@@ -123,7 +145,9 @@ const RideDetail = () => {
             </div>
             <div>
               <p className="font-bold text-foreground">{ride.driverName}</p>
-              <p className="text-xs text-muted-foreground">{ride.carModel}</p>
+              <p className="text-xs text-muted-foreground">
+                {ride.carModel} {ride.carNumberPlate ? `• ${ride.carNumberPlate}` : ""}
+              </p>
             </div>
           </div>
           <button
@@ -134,6 +158,55 @@ const RideDetail = () => {
             <Phone className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Driver Details */}
+        <div className="bg-secondary/50 rounded-xl p-3 mb-3 flex flex-col gap-2">
+          {ride.driverEmail && (
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Email:</span>
+              <p className="text-xs text-foreground break-all">{ride.driverEmail}</p>
+            </div>
+          )}
+          {ride.driverRollNumber && (
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Roll No:</span>
+              <p className="text-xs text-foreground">{ride.driverRollNumber}</p>
+            </div>
+          )}
+          {ride.driverBranch && (
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Branch:</span>
+              <p className="text-xs text-foreground">{ride.driverBranch}</p>
+            </div>
+          )}
+          {ride.driverYear && (
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Year:</span>
+              <p className="text-xs text-foreground">{ride.driverYear}</p>
+            </div>
+          )}
+          {canSeePhone && ride.driverPhone ? (
+            <div className="flex items-start gap-2 pt-1 border-t border-border">
+              <span className="text-[10px] font-semibold text-primary min-w-16">Phone:</span>
+              <p className="text-xs text-primary font-semibold">{ride.driverPhone}</p>
+            </div>
+          ) : (
+            !isRideOwner && (
+              <div className="flex items-start gap-2 pt-1 border-t border-border">
+                <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Phone:</span>
+                <p className="text-[10px] text-muted-foreground italic">Once ride is accepted, phone number will be visible</p>
+              </div>
+            )
+          )}
+        </div>
+
+        {ride.carImageUrl && (
+          <img
+            src={ride.carImageUrl}
+            alt="Car preview"
+            className="w-full h-32 object-cover rounded-xl border border-border mb-3"
+          />
+        )}
 
         {/* Route */}
         <div className="flex items-start gap-3 mb-4">
@@ -159,8 +232,8 @@ const RideDetail = () => {
           <div className="flex items-center gap-1.5">
             <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
             <div>
-              <p className="font-bold text-sm text-foreground">{ride.pricePerMile}</p>
-              <p className="text-[10px] text-muted-foreground">per mile</p>
+              <p className="font-bold text-sm text-foreground">{ride.pricePerSeat}</p>
+              <p className="text-[10px] text-muted-foreground">per seat</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -202,8 +275,10 @@ const RideDetail = () => {
                   Status: {request.status}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                {request.status === "pending"
+                  {request.status === "pending"
                     ? "Waiting for driver to respond"
+                    : request.status === "approved"
+                    ? "Booking approved. Contact unlocked."
                     : "Request was declined"}
                 </p>
               </div>
@@ -211,6 +286,46 @@ const RideDetail = () => {
           </div>
         )}
       </div>
+
+      {/* Seat Selection Modal */}
+      {showSeatSelection && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+          <div className="w-full bg-card rounded-t-3xl p-6 border border-t border-border">
+            <h2 className="text-xl font-bold text-foreground mb-4 text-center">
+              How many seats?
+            </h2>
+            <div className="flex gap-2 mb-6">
+              {Array.from({ length: ride.seats }, (_, i) => i + 1).map((seat) => (
+                <button
+                  key={seat}
+                  onClick={() => setSeatsToRequest(seat)}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-colors ${
+                    seatsToRequest === seat
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground"
+                  }`}
+                >
+                  {seat}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSeatSelection(false)}
+                className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold text-sm hover:bg-secondary/80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRequest}
+                className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors"
+              >
+                Confirm Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Chat Section */}
       {request && (

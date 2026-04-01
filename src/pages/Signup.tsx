@@ -2,10 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Car, Mail, Lock, User, ArrowRight } from "lucide-react";
 
+const branches = ["CSE", "Mech Engg", "ECE", "Civil", "MBA", "Pharmacy", "Biotech", "BCA", "BBA"];
+const years = ["1st Year", "2nd Year", "3rd Year", "4th Year", "MBA/PhD"];
+
 const Signup = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [rollNumber, setRollNumber] = useState("");
+  const [phone, setPhone] = useState("");
+  const [branch, setBranch] = useState("");
+  const [year, setYear] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -18,12 +25,27 @@ const Signup = () => {
       return;
     }
 
+    if (phone.trim().length < 10) {
+      setError("Please enter a valid phone number.");
+      return;
+    }
+
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
       return;
     }
 
-    localStorage.setItem("easyride_user", JSON.stringify({ email, name }));
+    if (!rollNumber.trim()) {
+      setError("Please enter your roll number.");
+      return;
+    }
+
+    if (!branch || !year) {
+      setError("Please select branch and year.");
+      return;
+    }
+
+    localStorage.setItem("easyride_user", JSON.stringify({ email, name, phone, rollNumber, branch, year }));
     navigate("/home");
   };
 
@@ -66,6 +88,64 @@ const Signup = () => {
             className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
             required
           />
+        </div>
+
+        <div className="relative">
+          <input
+            type="tel"
+            placeholder="Phone Number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full px-4 py-3.5 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+            required
+          />
+        </div>
+
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Roll Number"
+            value={rollNumber}
+            onChange={(e) => setRollNumber(e.target.value.toUpperCase())}
+            className="w-full px-4 py-3.5 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Branch</label>
+            <select
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              className="w-full px-4 py-3.5 rounded-xl bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+              required
+            >
+              <option value="">Select Branch</option>
+              {branches.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Year</label>
+            <select
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="w-full px-4 py-3.5 rounded-xl bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+              required
+            >
+              <option value="">Select Year</option>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="relative">

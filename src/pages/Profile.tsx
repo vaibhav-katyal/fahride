@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Car, LogOut, User, Mail, Bell } from "lucide-react";
+import { Car, LogOut, User, Mail, Phone, Pencil, BookOpenCheck } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useRideContext } from "@/context/RideContext";
 
@@ -11,6 +11,7 @@ const Profile = () => {
     (r) => r.driverName === currentUser.name || r.avatar === (currentUser.name || "Y").slice(0, 2).toUpperCase()
   );
   const myRequests = requests.filter((r) => r.requesterEmail === currentUser.email);
+  const myBookedRides = myRequests.filter((r) => r.status !== "rejected");
 
   const handleLogout = () => {
     localStorage.removeItem("easyride_user");
@@ -29,34 +30,65 @@ const Profile = () => {
         <p className="text-sm text-muted-foreground">{currentUser.email}</p>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="bg-card rounded-xl p-4 border border-border text-center">
+          <p className="text-lg font-bold text-foreground">{myPostedRides.length}</p>
+          <p className="text-xs text-muted-foreground">Offered Rides</p>
+        </div>
+        <div className="bg-card rounded-xl p-4 border border-border text-center">
+          <p className="text-lg font-bold text-foreground">{myBookedRides.length}</p>
+          <p className="text-xs text-muted-foreground">Booked Rides</p>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-3">
         <div className="bg-card rounded-xl p-4 border border-border flex items-center gap-3">
           <Mail className="w-5 h-5 text-muted-foreground" />
-          <div>
+          <div className="flex-1">
             <p className="text-xs text-muted-foreground">Email</p>
             <p className="text-sm font-medium text-foreground">{currentUser.email}</p>
           </div>
         </div>
-        <div
-          onClick={() => navigate("/home")}
-          className="bg-card rounded-xl p-4 border border-border flex items-center gap-3 cursor-pointer hover:bg-secondary transition-colors"
+        <div className="bg-card rounded-xl p-4 border border-border flex items-center gap-3">
+          <Phone className="w-5 h-5 text-muted-foreground" />
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground">Phone</p>
+            <p className="text-sm font-medium text-foreground">{currentUser.phone || "Not added"}</p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => navigate("/my-rides")}
+          className="bg-card rounded-xl p-4 border border-border flex items-center gap-3 text-left hover:bg-secondary transition-colors"
         >
           <Car className="w-5 h-5 text-muted-foreground" />
           <div>
             <p className="text-xs text-muted-foreground">My Rides</p>
-            <p className="text-sm font-medium text-foreground">{myPostedRides.length} rides posted</p>
+            <p className="text-sm font-medium text-foreground">{myPostedRides.length} rides offered by me</p>
           </div>
-        </div>
-        <div
-          onClick={() => navigate("/notifications")}
-          className="bg-card rounded-xl p-4 border border-border flex items-center gap-3 cursor-pointer hover:bg-secondary transition-colors"
+        </button>
+
+        <button
+          onClick={() => navigate("/my-bookings")}
+          className="bg-card rounded-xl p-4 border border-border flex items-center gap-3 text-left hover:bg-secondary transition-colors"
         >
-          <Bell className="w-5 h-5 text-muted-foreground" />
+          <BookOpenCheck className="w-5 h-5 text-muted-foreground" />
           <div>
-            <p className="text-xs text-muted-foreground">My Requests</p>
-            <p className="text-sm font-medium text-foreground">{myRequests.length} requests sent</p>
+            <p className="text-xs text-muted-foreground">Booked Rides</p>
+            <p className="text-sm font-medium text-foreground">{myBookedRides.length} rides joined by me</p>
           </div>
-        </div>
+        </button>
+
+        <button
+          onClick={() => navigate("/signup")}
+          className="bg-card rounded-xl p-4 border border-border flex items-center gap-3 text-left hover:bg-secondary transition-colors"
+        >
+          <Pencil className="w-5 h-5 text-muted-foreground" />
+          <div>
+            <p className="text-xs text-muted-foreground">Edit Profile</p>
+            <p className="text-sm font-medium text-foreground">Update personal details</p>
+          </div>
+        </button>
 
         <button
           onClick={handleLogout}

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowLeft, MapPin, Calendar, Clock, Car, DollarSign, Users, ChevronDown } from "lucide-react";
+import { useState, useRef } from "react";
+import { ArrowLeft, MapPin, Calendar, Clock, Car, DollarSign, Camera, X, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
@@ -17,8 +17,12 @@ const PostRide = () => {
   const [seats, setSeats] = useState(1);
   const [price, setPrice] = useState("");
   const [carModel, setCarModel] = useState("");
+  const [carNumberPlate, setCarNumberPlate] = useState("");
+  const [carImageUrl, setCarImageUrl] = useState("");
+  const [carImagePreview, setCarImagePreview] = useState<string | null>(null);
   const [repeatDays, setRepeatDays] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleDay = (day: string) => {
     setRepeatDays((prev) =>
@@ -26,21 +30,61 @@ const PostRide = () => {
     );
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setCarImageUrl(base64);
+      setCarImagePreview(base64);
+      toast.success("Image selected successfully!");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setCarImageUrl("");
+    setCarImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handlePost = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!from || !to || !date || !time || !price || !carModel) {
+    if (!from || !to || !date || !time || !price || !carModel || !carNumberPlate) {
       toast.error("Please fill in all fields.");
       return;
     }
     const newRide = {
       id: crypto.randomUUID(),
       driverName: currentUser.name || "You",
+      driverEmail: currentUser.email || "",
+      driverPhone: currentUser.phone || "",
+      driverRollNumber: currentUser.rollNumber || "",
+      driverBranch: currentUser.branch || "",
+      driverYear: currentUser.year || "",
       carModel,
+      carNumberPlate,
+      carImageUrl,
       from,
       to,
+      date,
       departureTime: time,
       arrivalTime: "",
-      pricePerMile: `₹${price}`,
+      pricePerSeat: `₹${price}`,
       seats,
       eta: "—",
       avatar: (currentUser.name || "Y").slice(0, 2).toUpperCase(),
@@ -136,13 +180,13 @@ const PostRide = () => {
           {/* Price & Car */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="text-sm font-semibold text-foreground mb-2 block">Price/mile</label>
+              <label className="text-sm font-semibold text-foreground mb-2 block">Price per seat</label>
               <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
                 <DollarSign className="w-4 h-4 text-muted-foreground" />
                 <input
                   type="number"
                   step="0.5"
-                  placeholder="4.00"
+                  placeholder="120"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -161,6 +205,58 @@ const PostRide = () => {
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-sm font-semibold text-foreground mb-2 block">Number Plate</label>
+              <input
+                type="text"
+                placeholder="PB10AB1234"
+                value={carNumberPlate}
+                onChange={(e) => setCarNumberPlate(e.target.value.toUpperCase())}
+                className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-sm font-semibold text-foreground mb-2 block">Car Photo</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              {carImagePreview ? (
+                <div className="relative rounded-xl overflow-hidden border border-border">
+                  <img
+                    src={carImagePreview}
+                    alt="Car preview"
+                    className="w-full h-32 object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-lg hover:bg-destructive/90 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-32 bg-card border border-border border-dashed rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-secondary transition-colors"
+                >
+                  <Camera className="w-6 h-6 text-primary" />
+                  <div className="text-center">
+                    <p className="text-xs font-semibold text-foreground">Take photo or choose from gallery</p>
+                    <p className="text-[10px] text-muted-foreground">Max 5MB</p>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 

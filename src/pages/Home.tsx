@@ -8,15 +8,17 @@ import { toast } from "sonner";
 
 const Home = () => {
   const navigate = useNavigate();
-  const { rides, sendRequest } = useRideContext();
+  const { rides, sendRequest, requests, currentUser } = useRideContext();
   const [showFilters, setShowFilters] = useState(false);
   const [appliedMinSeats, setAppliedMinSeats] = useState(0);
   const [appliedMaxPricePerMile, setAppliedMaxPricePerMile] = useState<number | null>(null);
   const [draftMinSeats, setDraftMinSeats] = useState(0);
   const [draftMaxPricePerMile, setDraftMaxPricePerMile] = useState<number | null>(null);
+  const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
+  const [seatsToRequest, setSeatsToRequest] = useState(1);
 
   const filteredRides = rides.filter((ride) => {
-    const priceValue = Number.parseFloat(ride.pricePerMile.replace(/[^\d.]/g, ""));
+    const priceValue = Number.parseFloat(ride.pricePerSeat.replace(/[^\d.]/g, ""));
     const seatMatch = appliedMinSeats === 0 || ride.seats >= appliedMinSeats;
     const priceMatch = appliedMaxPricePerMile === null || priceValue <= appliedMaxPricePerMile;
     return seatMatch && priceMatch;
@@ -89,16 +91,22 @@ const Home = () => {
         </div>
 
         <div className="flex flex-col gap-4">
-          {filteredRides.map((ride) => (
-            <RideCard
-              key={ride.id}
-              ride={ride}
-              onRequest={() => {
-                sendRequest(ride.id);
-                toast.success(`Ride request sent to ${ride.driverName}!`);
-              }}
-            />
-          ))}
+          {filteredRides.map((ride) => {
+            const request = requests.find(
+              (r) => r.rideId === ride.id && r.requesterEmail === currentUser.email
+            );
+            return (
+              <RideCard
+                key={ride.id}
+                ride={ride}
+                request={request}
+                onRequest={() => {
+                  setSelectedRideId(ride.id);
+                  setSeatsToRequest(1);
+                }}
+              />
+            );
+          })}
 
           {filteredRides.length === 0 && (
             <p className="text-muted-foreground text-sm text-center py-6">
@@ -107,6 +115,64 @@ const Home = () => {
           )}
         </div>
       </div>
+
+      {/* Seat Selection Modal */}
+      {selectedRideId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+          <div className="w-full bg-card rounded-t-2xl p-4 border border-b-0 border-border">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-foreground">How many seats?</h3>
+              <button
+                onClick={() => setSelectedRideId(null)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {selectedRideId && (
+              <>
+                <div className="flex gap-2 mb-4">
+                  {Array.from(
+                    { length: rides.find((r) => r.id === selectedRideId)?.seats || 1 },
+                    (_, i) => i + 1
+                  ).map((seat) => (
+                    <button
+                      key={seat}
+                      onClick={() => setSeatsToRequest(seat)}
+                      className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-colors ${
+                        seatsToRequest === seat
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-foreground"
+                      }`}
+                    >
+                      {seat}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const ride = rides.find((r) => r.id === selectedRideId);
+                    const result = sendRequest(selectedRideId, seatsToRequest);
+                    setSelectedRideId(null);
+                    if (result.success) {
+                      toast.success(
+                        `Requested ${seatsToRequest} ${seatsToRequest === 1 ? "seat" : "seats"} from ${ride?.driverName}!`
+                      );
+                    } else {
+                      toast.error(result.message);
+                    }
+                  }}
+                  className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 transition-colors"
+                >
+                  Confirm Request
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {showFilters && (
         <div className="fixed inset-0 z-50">
@@ -154,12 +220,12 @@ const Home = () => {
             </div>
 
             <div className="mb-8">
-              <p className="text-sm font-semibold text-foreground mb-2">Max Price / Mile</p>
+              <p className="text-sm font-semibold text-foreground mb-2">Max Price / Seat</p>
               <div className="flex gap-2 flex-wrap">
                 {[
                   { label: "Any", value: null },
-                  { label: "<= 4.5", value: 4.5 },
-                  { label: "<= 5.0", value: 5 },
+                  { label: "<= 150", value: 150 },
+                  { label: "<= 200", value: 200 },
                 ].map((option) => (
                   <button
                     key={option.label}

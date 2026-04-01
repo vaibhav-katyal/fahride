@@ -13,6 +13,8 @@ import PostRide from "./pages/PostRide";
 import Profile from "./pages/Profile";
 import RideDetail from "./pages/RideDetail";
 import Notifications from "./pages/Notifications";
+import MyRides from "./pages/MyRides";
+import MyBookings from "./pages/MyBookings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,8 @@ const App = () => (
             <Route path="/home" element={<Home />} />
             <Route path="/search" element={<SearchRide />} />
             <Route path="/post-ride" element={<PostRide />} />
+            <Route path="/my-rides" element={<MyRides />} />
+            <Route path="/my-bookings" element={<MyBookings />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/ride/:id" element={<RideDetail />} />
             <Route path="/notifications" element={<Notifications />} />

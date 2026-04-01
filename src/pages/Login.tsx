@@ -22,8 +22,19 @@ const Login = () => {
       return;
     }
 
-    // Store login state
-    localStorage.setItem("easyride_user", JSON.stringify({ email }));
+    const previous = localStorage.getItem("easyride_user");
+    const previousUser = previous ? JSON.parse(previous) : {};
+    const fallbackName = email.split("@")[0].replace(/[._-]/g, " ");
+
+    localStorage.setItem(
+      "easyride_user",
+      JSON.stringify({
+        ...previousUser,
+        email,
+        name: previousUser.name || fallbackName,
+        phone: previousUser.phone || "",
+      })
+    );
     navigate("/home");
   };
 
