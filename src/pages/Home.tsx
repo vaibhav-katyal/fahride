@@ -1,4 +1,5 @@
-import { Search, MapPin, SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
+import { Search, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import RideCard from "@/components/RideCard";
@@ -8,6 +9,40 @@ import { toast } from "sonner";
 const Home = () => {
   const navigate = useNavigate();
   const { rides, sendRequest } = useRideContext();
+  const [showFilters, setShowFilters] = useState(false);
+  const [appliedMinSeats, setAppliedMinSeats] = useState(0);
+  const [appliedMaxPricePerMile, setAppliedMaxPricePerMile] = useState<number | null>(null);
+  const [draftMinSeats, setDraftMinSeats] = useState(0);
+  const [draftMaxPricePerMile, setDraftMaxPricePerMile] = useState<number | null>(null);
+
+  const filteredRides = rides.filter((ride) => {
+    const priceValue = Number.parseFloat(ride.pricePerMile.replace(/[^\d.]/g, ""));
+    const seatMatch = appliedMinSeats === 0 || ride.seats >= appliedMinSeats;
+    const priceMatch = appliedMaxPricePerMile === null || priceValue <= appliedMaxPricePerMile;
+    return seatMatch && priceMatch;
+  });
+
+  const handleLocationClick = () => {
+    toast.info("Location recentered to your current area.");
+  };
+
+  const handleFilterClick = () => {
+    setDraftMinSeats(appliedMinSeats);
+    setDraftMaxPricePerMile(appliedMaxPricePerMile);
+    setShowFilters(true);
+  };
+
+  const handleApplyFilters = () => {
+    setAppliedMinSeats(draftMinSeats);
+    setAppliedMaxPricePerMile(draftMaxPricePerMile);
+    setShowFilters(false);
+    toast.success("Filter changes applied.");
+  };
+
+  const handleResetFilters = () => {
+    setDraftMinSeats(0);
+    setDraftMaxPricePerMile(null);
+  };
 
   return (
     <div className="app-container bg-background min-h-screen pb-24">
@@ -31,7 +66,11 @@ const Home = () => {
           </button>
         </div>
         {/* Location button */}
-        <button className="absolute bottom-4 right-4 bg-card w-10 h-10 rounded-xl flex items-center justify-center shadow-md border border-border">
+        <button
+          type="button"
+          onClick={handleLocationClick}
+          className="absolute bottom-4 right-4 bg-card w-10 h-10 rounded-xl flex items-center justify-center shadow-md border border-border"
+        >
           <MapPin className="w-4 h-4 text-foreground" />
         </button>
       </div>
@@ -40,13 +79,17 @@ const Home = () => {
       <div className="px-4 pt-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-foreground">Nearby Rides</h2>
-          <button className="flex items-center gap-1 text-xs text-muted-foreground">
+          <button
+            type="button"
+            onClick={handleFilterClick}
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+          >
             <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
           </button>
         </div>
 
         <div className="flex flex-col gap-4">
-          {rides.map((ride) => (
+          {filteredRides.map((ride) => (
             <RideCard
               key={ride.id}
               ride={ride}
@@ -56,8 +99,103 @@ const Home = () => {
               }}
             />
           ))}
+
+          {filteredRides.length === 0 && (
+            <p className="text-muted-foreground text-sm text-center py-6">
+              No rides match current filters.
+            </p>
+          )}
         </div>
       </div>
+
+      {showFilters && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            onClick={() => setShowFilters(false)}
+            className="absolute inset-0 bg-black/30"
+            aria-label="Close filter sidebar"
+          />
+
+          <div className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-card border-l border-border p-5 flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-base font-bold text-foreground">Filters</h3>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                className="text-muted-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-5">
+              <p className="text-sm font-semibold text-foreground mb-2">Minimum Seats</p>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { label: "Any", value: 0 },
+                  { label: "2+", value: 2 },
+                  { label: "3+", value: 3 },
+                ].map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() => setDraftMinSeats(option.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      draftMinSeats === option.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <p className="text-sm font-semibold text-foreground mb-2">Max Price / Mile</p>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { label: "Any", value: null },
+                  { label: "<= 4.5", value: 4.5 },
+                  { label: "<= 5.0", value: 5 },
+                ].map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() => setDraftMaxPricePerMile(option.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      draftMaxPricePerMile === option.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-auto space-y-2">
+              <button
+                type="button"
+                onClick={handleApplyFilters}
+                className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold text-sm"
+              >
+                Apply Changes
+              </button>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="w-full bg-secondary text-foreground py-3 rounded-xl font-semibold text-sm"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>

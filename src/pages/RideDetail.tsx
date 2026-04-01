@@ -57,6 +57,14 @@ const RideDetail = () => {
     setChatText("");
   };
 
+  const handlePhoneClick = () => {
+    if (request?.status !== "approved") {
+      toast.info("Call option unlocks after the ride request is approved.");
+      return;
+    }
+    toast.success(`Calling ${ride.driverName}...`);
+  };
+
   const statusColor =
     request?.status === "approved"
       ? "text-primary"
@@ -118,7 +126,11 @@ const RideDetail = () => {
               <p className="text-xs text-muted-foreground">{ride.carModel}</p>
             </div>
           </div>
-          <button className="bg-primary text-primary-foreground w-10 h-10 rounded-xl flex items-center justify-center">
+          <button
+            type="button"
+            onClick={handlePhoneClick}
+            className="bg-primary text-primary-foreground w-10 h-10 rounded-xl flex items-center justify-center"
+          >
             <Phone className="w-4 h-4" />
           </button>
         </div>

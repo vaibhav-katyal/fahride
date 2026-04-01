@@ -1,5 +1,6 @@
 import { MapPin, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export interface Ride {
   id: string;
@@ -44,7 +45,11 @@ const RideCard = ({ ride, onRequest }: { ride: Ride; onRequest?: () => void }) =
             Request
           </button>
           <button
-            onClick={(e) => e.stopPropagation()}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toast.info(`Contact ${ride.driverName} from ride details after approval.`);
+            }}
             className="bg-primary text-primary-foreground w-8 h-8 rounded-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
           >
             <Phone className="w-3.5 h-3.5" />
