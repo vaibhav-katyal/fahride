@@ -12,7 +12,7 @@ const Welcome = () => {
           <Car className="w-5 h-5 text-primary-foreground" />
         </div>
         <span className="text-xl font-bold text-foreground">
-          Easy <span className="text-primary">Ride</span>
+          Chit <span className="text-primary">Pool</span>
         </span>
       </div>
 
@@ -29,7 +29,7 @@ const Welcome = () => {
       <div className="text-center mb-8 animate-slide-up">
         <h1 className="text-2xl font-bold text-foreground leading-tight mb-3">
           Share rides easily<br />
-          with <span className="text-primary">Easy Ride</span>
+          with <span className="text-primary">Chit Pool</span>
         </h1>
         <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
           Share your rides daily while commuting to save money and reduce pollution. Exclusively for Chitkara University students.

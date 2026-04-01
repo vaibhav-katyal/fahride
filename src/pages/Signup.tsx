@@ -56,7 +56,7 @@ const Signup = () => {
           <Car className="w-5 h-5 text-primary-foreground" />
         </div>
         <span className="text-xl font-bold text-foreground">
-          Easy <span className="text-primary">Ride</span>
+          Chit <span className="text-primary">Pool</span>
         </span>
       </div>
 

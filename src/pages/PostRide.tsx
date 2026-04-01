@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ArrowLeft, MapPin, Calendar, Clock, Car, DollarSign, Camera, X, Image } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Clock, Car, IndianRupee, Camera, X, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
@@ -182,7 +182,7 @@ const PostRide = () => {
             <div className="flex-1">
               <label className="text-sm font-semibold text-foreground mb-2 block">Price per seat</label>
               <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
-                <DollarSign className="w-4 h-4 text-muted-foreground" />
+                <IndianRupee className="w-4 h-4 text-muted-foreground" />
                 <input
                   type="number"
                   step="0.5"
