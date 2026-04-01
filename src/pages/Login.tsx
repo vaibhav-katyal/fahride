@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Car, Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -40,10 +40,14 @@ const Login = () => {
 
   return (
     <div className="app-container flex flex-col bg-background min-h-screen px-6 py-10">
-      <div className="flex items-center gap-2 mb-12">
-        <div className="bg-primary rounded-full p-2">
-          <Car className="w-5 h-5 text-primary-foreground" />
-        </div>
+      <div className="flex items-center gap-1 mb-12">
+        <img
+          src="/chitpoo_logo.png"
+          alt="Chit Pool Logo"
+          width={80}
+          height={80}
+          className="w-30 h-30"
+        />
         <span className="text-xl font-bold text-foreground">
           Chit <span className="text-primary">Pool</span>
         </span>

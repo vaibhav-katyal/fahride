@@ -1,17 +1,20 @@
 import { useNavigate } from "react-router-dom";
 import carpoolImg from "@/assets/carpool-illustration.png";
-import { Car } from "lucide-react";
 
 const Welcome = () => {
   const navigate = useNavigate();
 
   return (
     <div className="app-container flex flex-col items-center justify-between bg-background px-6 py-10 min-h-screen">
-      <div className="flex items-center gap-2 mt-4">
-        <div className="bg-primary rounded-full p-2">
-          <Car className="w-5 h-5 text-primary-foreground" />
-        </div>
-        <span className="text-xl font-bold text-foreground">
+      <div className="flex items-center gap-1 mt-4">
+        <img
+          src="/chitpoo_logo.png"
+          alt="Chit Pool Logo"
+          width={80}
+          height={80}
+          className="w-30 h-30"
+        />
+        <span className="text-2xl font-bold text-foreground leading-tight">
           Chit <span className="text-primary">Pool</span>
         </span>
       </div>
