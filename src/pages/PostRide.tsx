@@ -331,8 +331,8 @@ const PostRide = () => {
           </div>
 
           {/* Price & Car */}
-          <div className="flex gap-3">
-            <div className="flex-1">
+          <div>
+            <div>
               <label className="text-sm font-semibold text-foreground mb-2 block">Price per seat</label>
               <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
                 <IndianRupee className="w-4 h-4 text-muted-foreground" />
@@ -346,8 +346,8 @@ const PostRide = () => {
                 />
               </div>
             </div>
-            <div className="flex-1">
-              <label className="text-sm font-semibold text-foreground mb-2 block">Car Details</label>
+            <div>
+              <label className="text-sm font-semibold text-foreground mb-2 block mt-3">Car Details</label>
               <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
                 <Car className="w-4 h-4 text-muted-foreground" />
                 <input
@@ -361,7 +361,7 @@ const PostRide = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1">
               <label className="text-sm font-semibold text-foreground mb-2 block">Number Plate</label>
               <input

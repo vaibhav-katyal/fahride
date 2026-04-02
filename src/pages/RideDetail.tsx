@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Chat from "@/components/Chat";
+import BottomNav from "@/components/BottomNav";
 import LiveRideMap from "@/components/LiveRideMap";
 import { useRideContext } from "@/context/RideContext";
 import { getCurrentUser } from "@/lib/auth";
@@ -105,7 +106,7 @@ const RideDetail = () => {
       : Loader2;
 
   return (
-    <div className="app-container bg-background min-h-screen pb-6">
+    <div className="app-container bg-background min-h-screen pb-24">
       <div className="px-4 pt-6 flex items-center gap-3 mb-4">
         <button type="button" onClick={() => navigate(-1)} className="text-foreground">
           <ArrowLeft className="w-5 h-5" />
@@ -336,6 +337,8 @@ const RideDetail = () => {
           />
         </div>
       )}
+
+      <BottomNav />
     </div>
   );
 };
