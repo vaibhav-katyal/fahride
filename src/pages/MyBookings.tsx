@@ -51,7 +51,7 @@ const MyBookings = () => {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => navigate(`/ride/${ride.id}`)}
+                    onClick={() => navigate(`/ride/${ride.id}?requestId=${booking.id}`)}
                     className="flex-1 bg-secondary text-foreground py-2.5 rounded-xl text-xs font-semibold"
                   >
                     Ride Details

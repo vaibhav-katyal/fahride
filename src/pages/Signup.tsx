@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, User, ArrowRight, Phone, ShieldCheck } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Phone, ShieldCheck, Clock } from "lucide-react";
 import {
   isCollegeEmail,
   sanitizePhone,
@@ -25,6 +25,26 @@ const Signup = () => {
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resendAfterTime, setResendAfterTime] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!resendAfterTime) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((resendAfterTime - now) / 1000));
+      setRemainingSeconds(remaining);
+
+      if (remaining === 0) {
+        setResendAfterTime(null);
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [resendAfterTime]);
 
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +81,7 @@ const Signup = () => {
       return;
     }
 
-    apiRequest<{ success: boolean; message: string; data: { email: string; devOtp?: string } }>("/auth/signup/request-otp", {
+    apiRequest<{ success: boolean; message: string; data: { email: string; resendAfter: string } }>("/auth/signup/request-otp", {
       method: "POST",
       body: JSON.stringify({
         name: name.trim(),
@@ -76,14 +96,15 @@ const Signup = () => {
         setEmail(normalizedEmail);
         setPhone(normalizedPhone);
         setStep("otp");
-        if (response.data.devOtp) {
-          toast.success(`Dev OTP: ${response.data.devOtp}`);
-        } else {
-          toast.success("OTP sent to your email.");
-        }
+        setResendAfterTime(new Date(response.data.resendAfter).getTime());
+        toast.success("OTP sent to your email.");
       })
       .catch((apiError: unknown) => {
-        setError(apiError instanceof Error ? apiError.message : "Failed to send OTP");
+        const errorMsg = apiError instanceof Error ? apiError.message : "Failed to send OTP";
+        setError(errorMsg);
+        if (errorMsg.includes("Please wait")) {
+          toast.error("OTP request already sent. Please check your email or wait before retrying.");
+        }
       })
       .finally(() => setIsLoading(false));
   };
@@ -245,9 +266,20 @@ const Signup = () => {
               OTP sent to {email}.
             </p>
 
-            <button type="button" onClick={handleSendOtp} className="text-left text-xs text-primary font-semibold px-1">
-              Resend OTP
-            </button>
+            {remainingSeconds > 0 ? (
+              <div className="flex items-center gap-2 px-1 py-2 bg-amber-50 dark:bg-amber-950 rounded-lg text-amber-800 dark:text-amber-200 text-xs">
+                <Clock className="w-4 h-4" />
+                <span>Resend available in {remainingSeconds} seconds</span>
+              </div>
+            ) : (
+              <button 
+                type="button" 
+                onClick={handleSendOtp} 
+                className="text-left text-xs text-primary font-semibold px-1 hover:underline"
+              >
+                Resend OTP
+              </button>
+            )}
           </>
         )}
 

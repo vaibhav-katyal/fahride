@@ -4,6 +4,7 @@ import { RideModel, type RideDocument } from "../models/Ride.model.js";
 import { UserModel } from "../models/User.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/appError.js";
+import { generateETag, checkETag } from "../utils/etag.js";
 import { createRideSchema } from "../validators/ride.validator.js";
 import type { AuthenticatedRequest } from "../middlewares/auth.middleware.js";
 
@@ -67,9 +68,19 @@ export const getRides = asyncHandler(async (req: AuthenticatedRequest, res: Resp
     .sort({ createdAt: -1 })
     .lean();
 
+  const rideData = rides.map((ride) => mapRidePayload(ride as RideDocument, false));
+  const eTag = generateETag(rideData);
+  const { isModified } = checkETag(eTag, req.headers["if-none-match"] as string);
+
+  if (!isModified) {
+    res.status(304).end();
+    return;
+  }
+
+  res.set("ETag", eTag);
   res.status(200).json({
     success: true,
-    data: rides.map((ride) => mapRidePayload(ride as RideDocument, false)),
+    data: rideData,
   });
 });
 

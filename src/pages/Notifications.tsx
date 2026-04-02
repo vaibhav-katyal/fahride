@@ -105,7 +105,7 @@ const Notifications = () => {
 
                   {req.status !== "pending" && (
                     <button
-                      onClick={() => navigate(`/ride/${req.rideId}`)}
+                      onClick={() => navigate(`/ride/${req.rideId}?requestId=${req.id}`)}
                       className="w-full flex items-center justify-center gap-1.5 bg-secondary text-foreground py-2.5 rounded-xl text-xs font-semibold hover:bg-secondary/80 transition-colors"
                     >
                       <MessageCircle className="w-3.5 h-3.5" /> View Ride

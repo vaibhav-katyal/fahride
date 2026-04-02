@@ -2,6 +2,12 @@ import { clearSession } from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
+// ETag cache: stores the last ETag for each endpoint
+const eTagCache = new Map<string, string>();
+
+// Response cache: stores the last response data for each endpoint (used when 304 is received)
+const responseCache = new Map<string, unknown>();
+
 export class ApiError extends Error {
   status: number;
 
@@ -39,11 +45,27 @@ export const apiRequest = async <T>(
     headers.set("Content-Type", "application/json");
   }
 
+  // Add ETag for GET requests to enable caching
+  if (!init.method || init.method === "GET") {
+    const cachedETag = eTagCache.get(path);
+    if (cachedETag) {
+      headers.set("If-None-Match", cachedETag);
+    }
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers,
     credentials: "include",
   });
+
+  // Handle 304 Not Modified - return cached data
+  if (response.status === 304) {
+    const cachedData = responseCache.get(path);
+    if (cachedData) {
+      return { success: true, data: cachedData } as T;
+    }
+  }
 
   const data = await response.json().catch(() => ({}));
 
@@ -66,6 +88,15 @@ export const apiRequest = async <T>(
       clearSession();
     }
     throw new ApiError(data.message || "Request failed", response.status);
+  }
+
+  // Store ETag and response data for future requests
+  const eTag = response.headers.get("ETag");
+  if (eTag && (!init.method || init.method === "GET")) {
+    eTagCache.set(path, eTag);
+    if (data.data) {
+      responseCache.set(path, data.data);
+    }
   }
 
   return data as T;

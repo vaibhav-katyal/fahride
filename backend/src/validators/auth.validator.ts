@@ -21,5 +21,15 @@ export const requestLoginOtpSchema = z.object({
 export const verifyOtpSchema = z.object({
   email: collegeEmail,
   otp: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
-  purpose: z.enum(["signup", "login"]),
+  purpose: z.enum(["signup", "login", "password-reset"]),
+});
+
+export const requestPasswordResetOtpSchema = z.object({
+  email: collegeEmail,
+});
+
+export const resetPasswordSchema = z.object({
+  email: collegeEmail,
+  otp: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
 });

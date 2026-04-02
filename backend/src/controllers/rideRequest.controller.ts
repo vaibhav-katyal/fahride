@@ -6,6 +6,7 @@ import { RideRequestModel, type RideRequestDocument } from "../models/RideReques
 import { UserModel } from "../models/User.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/appError.js";
+import { generateETag, checkETag } from "../utils/etag.js";
 import { createRideRequestSchema, updateRequestStatusSchema } from "../validators/ride.validator.js";
 
 const paramToString = (value: unknown) => (typeof value === "string" ? value : "");
@@ -138,11 +139,21 @@ export const getIncomingRequests = asyncHandler(async (req: AuthenticatedRequest
   const requests = await RideRequestModel.find({ rideOwner: req.user.id }).sort({ createdAt: -1 }).lean();
   const rideMap = await fetchRideMap(requests.map((item) => String(item.ride)));
 
+  const requestData = requests.map((item) =>
+    mapRequestPayload(item as RideRequestDocument, rideMap.get(String(item.ride)))
+  );
+  const eTag = generateETag(requestData);
+  const { isModified } = checkETag(eTag, req.headers["if-none-match"] as string);
+
+  if (!isModified) {
+    res.status(304).end();
+    return;
+  }
+
+  res.set("ETag", eTag);
   res.status(200).json({
     success: true,
-    data: requests.map((item) =>
-      mapRequestPayload(item as RideRequestDocument, rideMap.get(String(item.ride)))
-    ),
+    data: requestData,
   });
 });
 
@@ -157,11 +168,21 @@ export const getMyBookings = asyncHandler(async (req: AuthenticatedRequest, res:
 
   const rideMap = await fetchRideMap(requests.map((item) => String(item.ride)));
 
+  const requestData = requests.map((item) =>
+    mapRequestPayload(item as RideRequestDocument, rideMap.get(String(item.ride)))
+  );
+  const eTag = generateETag(requestData);
+  const { isModified } = checkETag(eTag, req.headers["if-none-match"] as string);
+
+  if (!isModified) {
+    res.status(304).end();
+    return;
+  }
+
+  res.set("ETag", eTag);
   res.status(200).json({
     success: true,
-    data: requests.map((item) =>
-      mapRequestPayload(item as RideRequestDocument, rideMap.get(String(item.ride)))
-    ),
+    data: requestData,
   });
 });
 

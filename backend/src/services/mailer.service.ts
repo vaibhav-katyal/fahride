@@ -11,27 +11,31 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendOtpEmail = async (to: string, otp: string, purpose: "signup" | "login") => {
-  const subject = purpose === "signup" ? "Verify your PoolMate account" : "Your PoolMate login OTP";
+export const sendOtpEmail = async (to: string, otp: string, purpose: "signup" | "login" | "password-reset") => {
+  const subjectMap = {
+    signup: "Verify your PoolMate account",
+    login: "Your PoolMate login OTP",
+    "password-reset": "Reset your PoolMate password",
+  };
+
+  const purposeText = {
+    signup: "signup",
+    login: "login",
+    "password-reset": "password reset",
+  };
+
+  const subject = subjectMap[purpose];
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
       <h2>PoolMate OTP</h2>
-      <p>Your one-time password for <strong>${purpose}</strong> is:</p>
+      <p>Your one-time password for <strong>${purposeText[purpose]}</strong> is:</p>
       <div style="font-size: 28px; font-weight: 700; letter-spacing: 8px; margin: 20px 0;">${otp}</div>
       <p>This OTP expires in a few minutes. If you did not request this, ignore this email.</p>
     </div>
   `;
 
-  // In development mode, log OTP instead of sending
-  if (env.NODE_ENV === "development") {
-    console.log(`\n📧 [DEV MODE] OTP Email would be sent to ${to}`);
-    console.log(`   Subject: ${subject}`);
-    console.log(`   OTP: ${otp}\n`);
-    return; // Skip actual email send
-  }
-
-  // Production: send real email
+  // Always send email
   await transporter.sendMail({
     from: env.SMTP_FROM,
     to,

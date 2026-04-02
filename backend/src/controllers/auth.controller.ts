@@ -9,7 +9,7 @@ import { AppError } from "../utils/appError.js";
 import { generateOtp, hashOtp, verifyOtpHash } from "../utils/otp.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { sendOtpEmail } from "../services/mailer.service.js";
-import { requestLoginOtpSchema, requestSignupOtpSchema, verifyOtpSchema } from "../validators/auth.validator.js";
+import { requestLoginOtpSchema, requestSignupOtpSchema, verifyOtpSchema, requestPasswordResetOtpSchema, resetPasswordSchema } from "../validators/auth.validator.js";
 import type { AuthenticatedRequest } from "../middlewares/auth.middleware.js";
 
 const authTokens = (userId: string, email: string, role: "user" | "admin") => ({
@@ -115,7 +115,6 @@ export const requestSignupOtp = asyncHandler(async (req: Request, res: Response)
       email,
       expiresAt,
       resendAfter,
-      ...(env.NODE_ENV === "development" ? { devOtp: otp } : {}),
     },
   });
 });
@@ -223,7 +222,6 @@ export const requestLoginOtp = asyncHandler(async (req: Request, res: Response) 
       email,
       expiresAt,
       resendAfter,
-      ...(env.NODE_ENV === "development" ? { devOtp: otp } : {}),
     },
   });
 });
@@ -326,6 +324,100 @@ export const me = asyncHandler(async (req: AuthenticatedRequest, res: Response) 
         year: user.year,
         role: user.role,
       },
+    },
+  });
+});
+
+export const requestPasswordResetOtp = asyncHandler(async (req: Request, res: Response) => {
+  const parsed = requestPasswordResetOtpSchema.parse(req.body);
+  const email = parsed.email.toLowerCase();
+
+  const user = await UserModel.findOne({ email });
+  if (!user) {
+    throw new AppError("Account not found", 404);
+  }
+
+  const recentResetChallenge = await OtpChallengeModel.findOne({
+    email,
+    purpose: "password-reset",
+  }).sort({ createdAt: -1 });
+  if (recentResetChallenge && recentResetChallenge.resendAfter.getTime() > Date.now()) {
+    throw new AppError("Please wait before requesting another OTP", 429);
+  }
+
+  const now = new Date();
+  const resendAfter = new Date(now.getTime() + env.OTP_RESEND_COOLDOWN_SECONDS * 1000);
+  const expiresAt = new Date(now.getTime() + env.OTP_TTL_MINUTES * 60 * 1000);
+  const otp = generateOtp();
+
+  await OtpChallengeModel.deleteMany({ email, purpose: "password-reset" });
+  await OtpChallengeModel.create({
+    email,
+    purpose: "password-reset",
+    otpHash: hashOtp(otp),
+    attempts: 0,
+    expiresAt,
+    resendAfter,
+  });
+
+  await sendOtpEmail(email, otp, "password-reset");
+
+  res.status(200).json({
+    success: true,
+    message: "OTP sent for password reset",
+    data: {
+      email,
+      expiresAt,
+      resendAfter,
+    },
+  });
+});
+
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const parsed = resetPasswordSchema.parse(req.body);
+  const email = parsed.email.toLowerCase();
+
+  const challenge = await OtpChallengeModel.findOne({
+    email,
+    purpose: "password-reset",
+    consumedAt: { $exists: false },
+  }).sort({ createdAt: -1 });
+  if (!challenge) {
+    throw new AppError("OTP challenge not found", 404);
+  }
+
+  if (challenge.expiresAt.getTime() < Date.now()) {
+    throw new AppError("OTP expired", 410);
+  }
+
+  if (challenge.attempts >= 5) {
+    throw new AppError("Too many OTP attempts", 429);
+  }
+
+  challenge.attempts += 1;
+
+  if (!verifyOtpHash(parsed.otp, challenge.otpHash)) {
+    await challenge.save();
+    throw new AppError("Invalid OTP", 400);
+  }
+
+  const user = await UserModel.findOne({ email });
+  if (!user) {
+    throw new AppError("Account not found", 404);
+  }
+
+  const newPasswordHash = await bcrypt.hash(parsed.newPassword, 12);
+  user.passwordHash = newPasswordHash;
+  await user.save();
+
+  challenge.consumedAt = new Date();
+  await challenge.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Password reset successfully",
+    data: {
+      email,
     },
   });
 });

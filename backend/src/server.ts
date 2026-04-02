@@ -1,12 +1,16 @@
 import { createApp } from "./app.js";
+import { createServer } from "http";
 import { connectDB } from "./config/db.js";
 import { env } from "./config/env.js";
+import { initializeSocket } from "./services/socket.service.js";
 
 const bootstrap = async () => {
   await connectDB();
   const app = createApp();
+  const httpServer = createServer(app);
+  initializeSocket(httpServer);
 
-  app.listen(env.PORT, () => {
+  httpServer.listen(env.PORT, () => {
     console.log(`Backend running on port ${env.PORT}`);
   });
 };

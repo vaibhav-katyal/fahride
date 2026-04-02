@@ -175,7 +175,7 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
       if (document.visibilityState === "visible") {
         refreshInBackground();
       }
-    }, 30000);
+    }, 90000);
 
     const onFocus = () => refreshInBackground();
     window.addEventListener("focus", onFocus);

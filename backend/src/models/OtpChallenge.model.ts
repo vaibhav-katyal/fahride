@@ -3,7 +3,7 @@ import { Schema, model } from "mongoose";
 const otpChallengeSchema = new Schema(
   {
     email: { type: String, required: true, lowercase: true, index: true },
-    purpose: { type: String, enum: ["signup", "login"], required: true, index: true },
+    purpose: { type: String, enum: ["signup", "login", "password-reset"], required: true, index: true },
     otpHash: { type: String, required: true },
     signupDraft: {
       name: { type: String },
