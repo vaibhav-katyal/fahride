@@ -311,21 +311,19 @@ const SearchRide = () => {
       )}
 
       {showFilters && (
-        <div className="fixed inset-0 z-50">
-          <button
-            type="button"
-            onClick={() => setShowFilters(false)}
-            className="absolute inset-0 bg-black/30"
-            aria-label="Close filter sidebar"
-          />
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-end" onClick={() => setShowFilters(false)}>
+          <div className="w-full bg-card rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto pb-24 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Handle bar */}
+            <div className="flex justify-center mb-6">
+              <div className="w-12 h-1.5 bg-muted rounded-full" />
+            </div>
 
-          <div className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-card border-l border-border p-5 flex flex-col">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-base font-bold text-foreground">Filters</h3>
+              <h3 className="text-lg font-bold text-foreground">Filters</h3>
               <button
                 type="button"
                 onClick={() => setShowFilters(false)}
-                className="text-muted-foreground"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -379,7 +377,7 @@ const SearchRide = () => {
               </div>
             </div>
 
-            <div className="mt-auto space-y-2">
+            <div className="space-y-2">
               <button
                 type="button"
                 onClick={handleApplyFilters}
