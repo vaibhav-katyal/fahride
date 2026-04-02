@@ -255,7 +255,7 @@ const SearchRide = () => {
       {/* Seat Selection Modal */}
       {selectedRideId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="w-full bg-card rounded-t-2xl p-4 border border-b-0 border-border">
+          <div className="w-full bg-card rounded-t-2xl p-4 border border-b-0 border-border pb-24">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-foreground">How many seats?</h3>
               <button

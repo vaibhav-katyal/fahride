@@ -288,7 +288,7 @@ const RideDetail = () => {
 
       {showSeatSelection && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="w-full bg-card rounded-t-3xl p-6 border border-t border-border">
+          <div className="w-full bg-card rounded-t-3xl p-6 border border-t border-border pb-24">
             <h2 className="text-xl font-bold text-foreground mb-4 text-center">How many seats?</h2>
             <div className="flex gap-2 mb-6">
               {Array.from({ length: ride.seats }, (_, i) => i + 1).map((seat) => (
