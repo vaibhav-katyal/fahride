@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Ride } from "@/components/RideCard";
 import {
   AUTH_CHANGED_EVENT,
@@ -90,6 +90,7 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const refreshInFlightRef = useRef(false);
 
   const guestUser: UserAccount = {
     name: "Student",
@@ -110,12 +111,14 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const refreshData = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
     if (!currentUser?.id) {
       setRides([]);
       setRequests([]);
       return;
     }
 
+    refreshInFlightRef.current = true;
     setIsLoading(true);
     try {
       const [allRides, incoming, mine] = await Promise.all([
@@ -132,6 +135,7 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
       setRides(Array.from(rideMap.values()));
       setRequests(mergeRequests([...(incoming.data || []), ...(mine.data || [])]));
     } finally {
+      refreshInFlightRef.current = false;
       setIsLoading(false);
     }
   }, [currentUser?.id, mergeRequests]);
@@ -171,7 +175,7 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
       if (document.visibilityState === "visible") {
         refreshInBackground();
       }
-    }, 4000);
+    }, 30000);
 
     const onFocus = () => refreshInBackground();
     window.addEventListener("focus", onFocus);

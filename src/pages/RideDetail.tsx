@@ -61,6 +61,10 @@ const RideDetail = () => {
   }
 
   const handleRequest = () => {
+    if (isRideOwner) {
+      toast.info("You cannot request your own ride.");
+      return;
+    }
     setShowSeatSelection(true);
   };
 
@@ -252,7 +256,14 @@ const RideDetail = () => {
 
       {/* Request Status / Button */}
       <div className="mx-4 mb-4">
-        {!request ? (
+        {isRideOwner ? (
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <p className="text-sm font-semibold text-foreground">This is your ride</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              You can manage incoming requests from Notifications.
+            </p>
+          </div>
+        ) : !request ? (
           <button
             onClick={handleRequest}
             className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-semibold text-sm hover:bg-primary/90 transition-colors"

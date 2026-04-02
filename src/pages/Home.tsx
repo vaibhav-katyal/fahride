@@ -92,6 +92,7 @@ const Home = () => {
 
         <div className="flex flex-col gap-4">
           {filteredRides.map((ride) => {
+            const isOwnRide = ride.driverEmail === currentUser.email;
             const request = requests.find(
               (r) => r.rideId === ride.id && r.requesterEmail === currentUser.email
             );
@@ -100,10 +101,14 @@ const Home = () => {
                 key={ride.id}
                 ride={ride}
                 request={request}
-                onRequest={() => {
-                  setSelectedRideId(ride.id);
-                  setSeatsToRequest(1);
-                }}
+                onRequest={
+                  isOwnRide
+                    ? undefined
+                    : () => {
+                        setSelectedRideId(ride.id);
+                        setSeatsToRequest(1);
+                      }
+                }
               />
             );
           })}

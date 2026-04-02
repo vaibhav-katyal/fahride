@@ -97,6 +97,7 @@ const SearchRide = () => {
             <p className="text-muted-foreground text-sm text-center py-8">No rides found. Try different locations.</p>
           ) : (
             filteredRides.map((ride) => {
+              const isOwnRide = ride.driverEmail === currentUser.email;
               const request = requests.find(
                 (r) => r.rideId === ride.id && r.requesterEmail === currentUser.email
               );
@@ -105,10 +106,14 @@ const SearchRide = () => {
                   key={ride.id}
                   ride={ride}
                   request={request}
-                  onRequest={() => {
-                    setSelectedRideId(ride.id);
-                    setSeatsToRequest(1);
-                  }}
+                  onRequest={
+                    isOwnRide
+                      ? undefined
+                      : () => {
+                          setSelectedRideId(ride.id);
+                          setSeatsToRequest(1);
+                        }
+                  }
                 />
               );
             })
