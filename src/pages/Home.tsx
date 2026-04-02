@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
+import HomeLiveMap from "@/components/HomeLiveMap";
 import RideCard from "@/components/RideCard";
 import { useRideContext } from "@/context/RideContext";
 import { reverseGeocode } from "@/lib/location";
@@ -91,21 +92,6 @@ const Home = () => {
     );
   };
 
-  const mapCenter = useMemo<Coordinate>(() => {
-    if (currentLocation) return currentLocation;
-    return [30.7333, 76.7794];
-  }, [currentLocation]);
-
-  const mapEmbedUrl = useMemo(() => {
-    const [lat, lon] = mapCenter;
-    const delta = 0.02;
-    const left = lon - delta;
-    const right = lon + delta;
-    const top = lat + delta;
-    const bottom = lat - delta;
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lon}`;
-  }, [mapCenter]);
-
   const handleFilterClick = () => {
     setDraftMinSeats(appliedMinSeats);
     setDraftMaxPricePerMile(appliedMaxPricePerMile);
@@ -127,20 +113,10 @@ const Home = () => {
   return (
     <div className="app-container bg-background min-h-screen pb-24">
       {/* Live map view */}
-      <div className="relative h-56 bg-secondary overflow-hidden">
-        <iframe
-          title="Live location map"
-          src={mapEmbedUrl}
-          className="absolute inset-0 h-full w-full border-0"
-          loading="lazy"
-        />
+      <div className="relative h-64 bg-secondary overflow-hidden">
+        <HomeLiveMap currentLocation={currentLocation} locationLabel={locationLabel} isLocating={isLocating} />
 
-        <div className="absolute top-3 left-3 max-w-[70%] rounded-lg bg-background/90 px-2 py-1.5 text-[10px] font-semibold text-foreground">
-          {isLocating ? "Detecting your location..." : locationLabel}
-        </div>
-
-        {/* Search bar */}
-        <div className="absolute bottom-4 left-4 right-16">
+        <div className="absolute bottom-4 left-4 right-16 z-[4]">
           <button
             onClick={() => navigate("/search")}
             className="w-full bg-card rounded-xl px-4 py-3 flex items-center gap-3 shadow-md border border-border"
@@ -149,11 +125,11 @@ const Home = () => {
             <span className="text-sm text-muted-foreground">Where are you going?</span>
           </button>
         </div>
-        {/* Location button */}
+
         <button
           type="button"
           onClick={handleLocationClick}
-          className="absolute bottom-4 right-4 bg-card w-10 h-10 rounded-xl flex items-center justify-center shadow-md border border-border"
+          className="absolute bottom-4 right-4 z-[4] bg-card w-10 h-10 rounded-xl flex items-center justify-center shadow-md border border-border"
         >
           <MapPin className="w-4 h-4 text-foreground" />
         </button>

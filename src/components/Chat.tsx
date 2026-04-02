@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { useSocket } from "@/context/SocketContext";
 import { useRideContext } from "@/context/RideContext";
+import { apiRequest } from "@/lib/api";
 import { toast } from "sonner";
 
 interface ChatProps {
@@ -12,18 +13,45 @@ interface ChatProps {
 }
 
 const Chat = ({ rideId, requestId, driverName, riderName }: ChatProps) => {
-  const { messages, sendMessage, joinChat, leaveChat, isTyping } = useSocket();
+  const { messages, setMessages, sendMessage, joinChat, leaveChat, isTyping } = useSocket();
   const { currentUser } = useRideContext();
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        const response = await apiRequest<{
+          success: boolean;
+          data?: {
+            messages?: Array<{
+              sender: { id: string; name: string; email: string };
+              content: string;
+              timestamp: string;
+            }>;
+          };
+        }>(`/chat/${rideId}/${requestId}`);
+
+        const historyMessages = response.data?.messages || [];
+        setMessages(
+          historyMessages.map((message) => ({
+            sender: message.sender,
+            content: message.content,
+            timestamp: new Date(message.timestamp),
+          }))
+        );
+      } catch {
+        // If REST history fails, socket join will still try to restore the thread.
+      }
+    };
+
+    void loadChatHistory();
     joinChat(rideId, requestId);
     return () => {
       leaveChat();
     };
-  }, [rideId, requestId, joinChat, leaveChat]);
+  }, [rideId, requestId, joinChat, leaveChat, setMessages]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });

@@ -4,7 +4,12 @@ import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import RideCard from "@/components/RideCard";
 import { useRideContext } from "@/context/RideContext";
-import { fetchPlaceSuggestions, type PlaceSuggestion } from "@/lib/location";
+import {
+  fetchPlaceSuggestions,
+  getLocationBaseName,
+  normalizeLocationText,
+  type PlaceSuggestion,
+} from "@/lib/location";
 import { toast } from "sonner";
 
 const SearchRide = () => {
@@ -74,20 +79,29 @@ const SearchRide = () => {
   }, [to]);
 
   const applyFromSuggestion = (value: string) => {
-    setFrom(value);
+    setFrom(getLocationBaseName(value));
     setFromSuggestions([]);
     setActiveField(null);
   };
 
   const applyToSuggestion = (value: string) => {
-    setTo(value);
+    setTo(getLocationBaseName(value));
     setToSuggestions([]);
     setActiveField(null);
   };
 
+  const locationMatches = (rideLocation: string, query: string) => {
+    if (!query.trim()) return true;
+
+    const normalizedRide = normalizeLocationText(rideLocation);
+    const normalizedQuery = normalizeLocationText(query);
+
+    return normalizedRide.includes(normalizedQuery) || normalizedQuery.includes(normalizedRide);
+  };
+
   const filteredRides = rides.filter((r) => {
-    const matchFrom = !from || r.from.toLowerCase().includes(from.toLowerCase());
-    const matchTo = !to || r.to.toLowerCase().includes(to.toLowerCase());
+    const matchFrom = locationMatches(r.from, from);
+    const matchTo = locationMatches(r.to, to);
     const priceValue = Number.parseFloat(r.pricePerSeat.replace(/[^\d.]/g, ""));
     const seatMatch = appliedMinSeats === 0 || r.seats >= appliedMinSeats;
     const priceMatch = appliedMaxPricePerMile === null || priceValue <= appliedMaxPricePerMile;

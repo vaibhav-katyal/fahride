@@ -13,6 +13,30 @@ interface JwtPayload {
   role: "user" | "admin";
 }
 
+interface RideLocationPayload {
+  rideId: string;
+  requestId: string;
+  lat: number;
+  lon: number;
+  heading?: number;
+  speed?: number;
+  timestamp?: string;
+}
+
+const liveRideCache = new Map<
+  string,
+  {
+    rideId: string;
+    requestId: string;
+    lat: number;
+    lon: number;
+    heading?: number;
+    speed?: number;
+    timestamp: string;
+    updatedBy: string;
+  }
+>();
+
 const getCookieValue = (cookieHeader: string | undefined, key: string) => {
   if (!cookieHeader) return "";
   const match = cookieHeader.match(new RegExp(`(?:^|; )${key}=([^;]+)`));
@@ -50,6 +74,29 @@ export const initializeSocket = (httpServer: Server) => {
 
   io.on("connection", (socket) => {
     const userId = socket.data.userId as string;
+
+    const authorizeRideAccess = async (rideId: string, requestId: string) => {
+      const ride = await RideModel.findById(rideId);
+      if (!ride) return { ok: false as const, message: "Ride not found" };
+
+      const request = await RideRequestModel.findById(requestId);
+      if (!request || String(request.ride) !== rideId) {
+        return { ok: false as const, message: "Request not found or doesn't match ride" };
+      }
+
+      if (request.status !== "approved") {
+        return { ok: false as const, message: "Ride is not approved" };
+      }
+
+      const isDriver = String(ride.owner) === userId;
+      const isRider = String(request.requester) === userId;
+
+      if (!isDriver && !isRider) {
+        return { ok: false as const, message: "Not authorized" };
+      }
+
+      return { ok: true as const };
+    };
 
     // Join chat room: format is "chat:rideId:requestId"
     socket.on("join-chat", async (data: { rideId: string; requestId: string }) => {
@@ -226,9 +273,162 @@ export const initializeSocket = (httpServer: Server) => {
       }
     });
 
+    socket.on("join-live-ride", async (data: { rideId: string; requestId: string }) => {
+      try {
+        const { rideId, requestId } = data;
+        const roomId = `live:${rideId}:${requestId}`;
+
+        const access = await authorizeRideAccess(rideId, requestId);
+        if (!access.ok) {
+          socket.emit("error", access.message);
+          return;
+        }
+
+        socket.data.currentLiveRideId = rideId;
+        socket.data.currentLiveRequestId = requestId;
+        socket.data.currentLiveRoom = roomId;
+
+        socket.join(roomId);
+
+        const cachedLocation = liveRideCache.get(roomId);
+        if (cachedLocation) {
+          socket.emit("ride-location-update", cachedLocation);
+        }
+
+        socket.to(roomId).emit("live-user-joined", {
+          userId,
+          userEmail: socket.data.userEmail,
+        });
+      } catch {
+        socket.emit("error", "Failed to join live ride room");
+      }
+    });
+
+    socket.on("ride-location:update", async (data: RideLocationPayload) => {
+      try {
+        const { rideId, requestId, lat, lon, heading, speed } = data;
+        const roomId = `live:${rideId}:${requestId}`;
+
+        const currentRideId = socket.data.currentLiveRideId as string | undefined;
+        const currentRequestId = socket.data.currentLiveRequestId as string | undefined;
+        if (!currentRideId || !currentRequestId || currentRideId !== rideId || currentRequestId !== requestId) {
+          socket.emit("error", "Join live ride before sending location");
+          return;
+        }
+
+        const access = await authorizeRideAccess(rideId, requestId);
+        if (!access.ok) {
+          socket.emit("error", access.message);
+          return;
+        }
+
+        const payload = {
+          rideId,
+          requestId,
+          lat,
+          lon,
+          heading,
+          speed,
+          timestamp: data.timestamp || new Date().toISOString(),
+          updatedBy: userId,
+        };
+
+        liveRideCache.set(roomId, payload);
+        io.to(roomId).emit("ride-location-update", payload);
+      } catch {
+        socket.emit("error", "Failed to update live location");
+      }
+    });
+
+    socket.on("leave-live-ride", () => {
+      if (socket.data.currentLiveRoom) {
+        socket.to(socket.data.currentLiveRoom).emit("live-user-left", { userId });
+        socket.leave(socket.data.currentLiveRoom);
+      }
+    });
+
+    socket.on("join-live-ride", async (data: { rideId: string; requestId: string }) => {
+      try {
+        const { rideId, requestId } = data;
+        const roomId = `live:${rideId}:${requestId}`;
+
+        const access = await authorizeRideAccess(rideId, requestId);
+        if (!access.ok) {
+          socket.emit("error", access.message);
+          return;
+        }
+
+        socket.data.currentLiveRideId = rideId;
+        socket.data.currentLiveRequestId = requestId;
+        socket.data.currentLiveRoom = roomId;
+        socket.join(roomId);
+
+        const cachedLocation = liveRideCache.get(roomId);
+        if (cachedLocation) {
+          socket.emit("ride-location-update", cachedLocation);
+        }
+
+        socket.to(roomId).emit("live-user-joined", {
+          userId,
+          userEmail: socket.data.userEmail,
+        });
+      } catch {
+        socket.emit("error", "Failed to join live ride room");
+      }
+    });
+
+    socket.on("ride-location:update", async (data: RideLocationPayload) => {
+      try {
+        const { rideId, requestId, lat, lon, heading, speed } = data;
+        const roomId = `live:${rideId}:${requestId}`;
+
+        const currentRideId = socket.data.currentLiveRideId as string | undefined;
+        const currentRequestId = socket.data.currentLiveRequestId as string | undefined;
+        if (!currentRideId || !currentRequestId || currentRideId !== rideId || currentRequestId !== requestId) {
+          socket.emit("error", "Join live ride before sending location");
+          return;
+        }
+
+        const access = await authorizeRideAccess(rideId, requestId);
+        if (!access.ok) {
+          socket.emit("error", access.message);
+          return;
+        }
+
+        const payload = {
+          rideId,
+          requestId,
+          lat,
+          lon,
+          heading,
+          speed,
+          timestamp: data.timestamp || new Date().toISOString(),
+          updatedBy: userId,
+        };
+
+        liveRideCache.set(roomId, payload);
+        io.to(roomId).emit("ride-location-update", payload);
+      } catch {
+        socket.emit("error", "Failed to update live location");
+      }
+    });
+
+    socket.on("leave-live-ride", () => {
+      if (socket.data.currentLiveRoom) {
+        socket.to(socket.data.currentLiveRoom).emit("live-user-left", { userId });
+        socket.leave(socket.data.currentLiveRoom);
+      }
+    });
+
     socket.on("disconnect", () => {
       if (socket.data.currentRoom) {
         socket.to(socket.data.currentRoom).emit("user-left", { userId });
+      }
+      if (socket.data.currentLiveRoom) {
+        socket.to(socket.data.currentLiveRoom).emit("live-user-left", { userId });
+      }
+      if (socket.data.currentLiveRoom) {
+        socket.to(socket.data.currentLiveRoom).emit("live-user-left", { userId });
       }
     });
   });

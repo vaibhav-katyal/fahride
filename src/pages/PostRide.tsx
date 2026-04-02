@@ -4,7 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
 import { useRideContext } from "@/context/RideContext";
-import { fetchPlaceSuggestions, type PlaceSuggestion } from "@/lib/location";
+import {
+  fetchPlaceSuggestions,
+  getBrowserCurrentLocation,
+  getLocationBaseName,
+  reverseGeocode,
+  type PlaceSuggestion,
+} from "@/lib/location";
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -29,6 +35,7 @@ const PostRide = () => {
   const [repeatDays, setRepeatDays] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetchingCurrentLocation, setIsFetchingCurrentLocation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -80,15 +87,33 @@ const PostRide = () => {
   }, [to]);
 
   const applyFromSuggestion = (value: string) => {
-    setFrom(value);
+    setFrom(getLocationBaseName(value));
     setFromSuggestions([]);
     setActiveField(null);
   };
 
   const applyToSuggestion = (value: string) => {
-    setTo(value);
+    setTo(getLocationBaseName(value));
     setToSuggestions([]);
     setActiveField(null);
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setIsFetchingCurrentLocation(true);
+
+    try {
+      const [lat, lon] = await getBrowserCurrentLocation();
+      const placeLabel = await reverseGeocode(lat, lon);
+      setFrom(getLocationBaseName(placeLabel));
+      setFromSuggestions([]);
+      setActiveField("from");
+      toast.success("Pickup location filled from your live location.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to get your current location.";
+      toast.error(message);
+    } finally {
+      setIsFetchingCurrentLocation(false);
+    }
   };
 
   const toggleDay = (day: string) => {
@@ -186,7 +211,16 @@ const PostRide = () => {
                   onChange={(e) => setFrom(e.target.value)}
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
-                <MapPin className="w-4 h-4 text-muted-foreground" />
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={isFetchingCurrentLocation}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Use current location"
+                  title="Use current location"
+                >
+                  <MapPin className={`w-4 h-4 ${isFetchingCurrentLocation ? "animate-pulse" : ""}`} />
+                </button>
               </div>
 
               {activeField === "from" && (isSearchingFrom || fromSuggestions.length > 0) && (

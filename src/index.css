@@ -67,3 +67,18 @@
     @apply max-w-md mx-auto min-h-screen relative;
   }
 }
+
+@keyframes live-map-pulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.3;
+  }
+  70% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}

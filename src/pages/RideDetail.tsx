@@ -116,7 +116,13 @@ const RideDetail = () => {
       <div className="mx-4 h-56 md:h-64 rounded-2xl bg-secondary border border-border overflow-hidden relative mb-4">
         {canViewMap ? (
           <>
-            <LiveRideMap from={ride.from} to={ride.to} />
+            <LiveRideMap
+              from={ride.from}
+              to={ride.to}
+              rideId={ride.id}
+              requestId={activeRequest?.id ?? ""}
+              isDriver={isRideOwner}
+            />
 
             <div className="absolute left-3 top-3 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground">
               {ride.from} -&gt; {ride.to}

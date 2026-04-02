@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { io, Socket } from "socket.io-client";
 
 interface Message {
@@ -16,10 +17,32 @@ interface SocketContextType {
   messages: Message[];
   isTyping: boolean;
   typingUser: string | null;
+  liveRideLocation: {
+    rideId: string;
+    requestId: string;
+    lat: number;
+    lon: number;
+    heading?: number;
+    speed?: number;
+    timestamp?: string;
+    updatedBy?: string;
+  } | null;
   sendMessage: (rideId: string, requestId: string, content: string) => boolean;
   joinChat: (rideId: string, requestId: string) => void;
   leaveChat: () => void;
+  joinLiveRide: (rideId: string, requestId: string) => void;
+  leaveLiveRide: () => void;
+  sendRideLocation: (payload: {
+    rideId: string;
+    requestId: string;
+    lat: number;
+    lon: number;
+    heading?: number;
+    speed?: number;
+    timestamp?: string;
+  }) => boolean;
   setIsTyping: (typing: boolean) => void;
+  setMessages: Dispatch<SetStateAction<Message[]>>;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -29,6 +52,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
+  const [liveRideLocation, setLiveRideLocation] = useState<SocketContextType["liveRideLocation"]>(null);
 
   useEffect(() => {
     const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
@@ -70,6 +94,14 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Socket error:", error);
     });
 
+    newSocket.on("ride-location-update", (payload: SocketContextType["liveRideLocation"]) => {
+      setLiveRideLocation(payload);
+    });
+
+    newSocket.on("live-user-left", () => {
+      // keep last known location visible, do not clear marker immediately
+    });
+
     setSocket(newSocket);
 
     return () => {
@@ -83,6 +115,32 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
   const leaveChat = useCallback(() => {
     socket?.emit("leave-chat");
+  }, [socket]);
+
+  const joinLiveRide = useCallback((rideId: string, requestId: string) => {
+    socket?.emit("join-live-ride", { rideId, requestId });
+  }, [socket]);
+
+  const leaveLiveRide = useCallback(() => {
+    socket?.emit("leave-live-ride");
+    setLiveRideLocation(null);
+  }, [socket]);
+
+  const sendRideLocation = useCallback((payload: {
+    rideId: string;
+    requestId: string;
+    lat: number;
+    lon: number;
+    heading?: number;
+    speed?: number;
+    timestamp?: string;
+  }) => {
+    if (!socket || !socket.connected) {
+      return false;
+    }
+
+    socket.emit("ride-location:update", payload);
+    return true;
   }, [socket]);
 
   const sendMessage = useCallback((rideId: string, requestId: string, content: string) => {
@@ -100,9 +158,14 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         messages,
         isTyping,
         typingUser,
+        liveRideLocation,
         sendMessage,
         joinChat,
         leaveChat,
+        joinLiveRide,
+        leaveLiveRide,
+        sendRideLocation,
+        setMessages,
         setIsTyping: (typing) => {
           setIsTyping(typing);
         },
