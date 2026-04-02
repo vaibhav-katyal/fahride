@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
-import { ArrowLeft, MapPin, Calendar, Clock, Car, IndianRupee, Camera, X, Image } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, MapPin, Calendar, Clock, Car, IndianRupee, Camera, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
 import { useRideContext } from "@/context/RideContext";
+import { fetchPlaceSuggestions, type PlaceSuggestion } from "@/lib/location";
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -12,6 +13,11 @@ const PostRide = () => {
   const { addRide } = useRideContext();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [fromSuggestions, setFromSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [toSuggestions, setToSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [isSearchingFrom, setIsSearchingFrom] = useState(false);
+  const [isSearchingTo, setIsSearchingTo] = useState(false);
+  const [activeField, setActiveField] = useState<"from" | "to" | null>(null);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [seats, setSeats] = useState(1);
@@ -24,6 +30,66 @@ const PostRide = () => {
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (from.trim().length < 3) {
+      setFromSuggestions([]);
+      setIsSearchingFrom(false);
+      return;
+    }
+
+    setIsSearchingFrom(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const suggestions = await fetchPlaceSuggestions(from);
+        setFromSuggestions(suggestions);
+      } catch {
+        setFromSuggestions([]);
+      } finally {
+        setIsSearchingFrom(false);
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [from]);
+
+  useEffect(() => {
+    if (to.trim().length < 3) {
+      setToSuggestions([]);
+      setIsSearchingTo(false);
+      return;
+    }
+
+    setIsSearchingTo(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const suggestions = await fetchPlaceSuggestions(to);
+        setToSuggestions(suggestions);
+      } catch {
+        setToSuggestions([]);
+      } finally {
+        setIsSearchingTo(false);
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [to]);
+
+  const applyFromSuggestion = (value: string) => {
+    setFrom(value);
+    setFromSuggestions([]);
+    setActiveField(null);
+  };
+
+  const applyToSuggestion = (value: string) => {
+    setTo(value);
+    setToSuggestions([]);
+    setActiveField(null);
+  };
 
   const toggleDay = (day: string) => {
     setRepeatDays((prev) =>
@@ -109,27 +175,78 @@ const PostRide = () => {
         <form onSubmit={handlePost} className="flex flex-col gap-4">
           {/* Route */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-              <div className="w-2 h-2 rounded-full bg-foreground" />
-              <input
-                type="text"
-                placeholder="Pickup location"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-              />
-              <MapPin className="w-4 h-4 text-muted-foreground" />
+            <div className="relative">
+              <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
+                <div className="w-2 h-2 rounded-full bg-foreground" />
+                <input
+                  type="text"
+                  placeholder="Pickup location"
+                  value={from}
+                  onFocus={() => setActiveField("from")}
+                  onChange={(e) => setFrom(e.target.value)}
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+              </div>
+
+              {activeField === "from" && (isSearchingFrom || fromSuggestions.length > 0) && (
+                <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                  {isSearchingFrom && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">Searching locations...</p>
+                  )}
+                  {!isSearchingFrom && fromSuggestions.length === 0 && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">No location found</p>
+                  )}
+                  {!isSearchingFrom &&
+                    fromSuggestions.map((item) => (
+                      <button
+                        key={item.place_id}
+                        type="button"
+                        onClick={() => applyFromSuggestion(item.display_name)}
+                        className="w-full border-b border-border last:border-b-0 px-3 py-2 text-left text-xs text-foreground hover:bg-secondary"
+                      >
+                        {item.display_name}
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-              <div className="w-2 h-2 rounded-full border-2 border-foreground" />
-              <input
-                type="text"
-                placeholder="Drop-off location"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-              />
-              <MapPin className="w-4 h-4 text-muted-foreground" />
+
+            <div className="relative">
+              <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
+                <div className="w-2 h-2 rounded-full border-2 border-foreground" />
+                <input
+                  type="text"
+                  placeholder="Drop-off location"
+                  value={to}
+                  onFocus={() => setActiveField("to")}
+                  onChange={(e) => setTo(e.target.value)}
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+              </div>
+
+              {activeField === "to" && (isSearchingTo || toSuggestions.length > 0) && (
+                <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                  {isSearchingTo && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">Searching locations...</p>
+                  )}
+                  {!isSearchingTo && toSuggestions.length === 0 && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">No location found</p>
+                  )}
+                  {!isSearchingTo &&
+                    toSuggestions.map((item) => (
+                      <button
+                        key={item.place_id}
+                        type="button"
+                        onClick={() => applyToSuggestion(item.display_name)}
+                        className="w-full border-b border-border last:border-b-0 px-3 py-2 text-left text-xs text-foreground hover:bg-secondary"
+                      >
+                        {item.display_name}
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
 

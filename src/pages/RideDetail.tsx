@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Chat from "@/components/Chat";
+import LiveRideMap from "@/components/LiveRideMap";
 import { useRideContext } from "@/context/RideContext";
 import { getCurrentUser } from "@/lib/auth";
 import { toast } from "sonner";
@@ -40,6 +41,8 @@ const RideDetail = () => {
   const activeRequest = isRideOwner
     ? selectedRequest || fallbackApprovedRequest
     : selectedRequest || request;
+
+  const canViewMap = isRideOwner || activeRequest?.status === "approved";
 
   const canSeePhone = isRideOwner || activeRequest?.status === "approved";
   const sessionUser = getCurrentUser();
@@ -110,18 +113,15 @@ const RideDetail = () => {
         <h1 className="text-xl font-bold text-foreground">Ride Details</h1>
       </div>
 
-      <div className="mx-4 h-44 rounded-2xl bg-secondary border border-border overflow-hidden relative mb-4">
-        {isRideOwner || activeRequest?.status === "approved" ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded-full bg-foreground" />
-              <div className="w-24 h-0.5 bg-primary" />
-              <div className="w-20 h-0.5 bg-primary" />
-              <div className="w-3 h-3 rounded-full border-2 border-foreground" />
+      <div className="mx-4 h-56 md:h-64 rounded-2xl bg-secondary border border-border overflow-hidden relative mb-4">
+        {canViewMap ? (
+          <>
+            <LiveRideMap from={ride.from} to={ride.to} />
+
+            <div className="absolute left-3 top-3 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground">
+              {ride.from} -&gt; {ride.to}
             </div>
-            <p className="text-xs text-muted-foreground">{ride.from} -&gt; {ride.to}</p>
-            <p className="text-[10px] text-primary font-semibold mt-1">Route Active</p>
-          </div>
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">

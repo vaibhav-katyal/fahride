@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import RideCard from "@/components/RideCard";
 import { useRideContext } from "@/context/RideContext";
+import { reverseGeocode } from "@/lib/location";
 import { toast } from "sonner";
+
+type Coordinate = [number, number];
 
 const Home = () => {
   const navigate = useNavigate();
@@ -16,6 +19,48 @@ const Home = () => {
   const [draftMaxPricePerMile, setDraftMaxPricePerMile] = useState<number | null>(null);
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const [seatsToRequest, setSeatsToRequest] = useState(1);
+  const [currentLocation, setCurrentLocation] = useState<Coordinate | null>(null);
+  const [locationLabel, setLocationLabel] = useState("Detecting your location...");
+  const [isLocating, setIsLocating] = useState(true);
+
+  useEffect(() => {
+    if (!("geolocation" in navigator)) {
+      setLocationLabel("Location not supported in this browser");
+      setIsLocating(false);
+      return;
+    }
+
+    const resolveLabel = async (lat: number, lon: number) => {
+      try {
+        const label = await reverseGeocode(lat, lon);
+        setLocationLabel(label);
+      } catch {
+        setLocationLabel(`Lat ${lat.toFixed(4)}, Lng ${lon.toFixed(4)}`);
+      }
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const coords: Coordinate = [position.coords.latitude, position.coords.longitude];
+        setCurrentLocation(coords);
+        setIsLocating(false);
+        void resolveLabel(coords[0], coords[1]);
+      },
+      () => {
+        setLocationLabel("Location permission denied");
+        setIsLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 10000,
+      }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
 
   const filteredRides = rides.filter((ride) => {
     const priceValue = Number.parseFloat(ride.pricePerSeat.replace(/[^\d.]/g, ""));
@@ -25,8 +70,41 @@ const Home = () => {
   });
 
   const handleLocationClick = () => {
-    toast.info("Location recentered to your current area.");
+    if (!("geolocation" in navigator)) {
+      toast.error("Location services are not available in this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords: Coordinate = [position.coords.latitude, position.coords.longitude];
+        setCurrentLocation(coords);
+        toast.success("Map recentered to your live location.");
+      },
+      () => {
+        toast.error("Unable to get your current location.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      }
+    );
   };
+
+  const mapCenter = useMemo<Coordinate>(() => {
+    if (currentLocation) return currentLocation;
+    return [30.7333, 76.7794];
+  }, [currentLocation]);
+
+  const mapEmbedUrl = useMemo(() => {
+    const [lat, lon] = mapCenter;
+    const delta = 0.02;
+    const left = lon - delta;
+    const right = lon + delta;
+    const top = lat + delta;
+    const bottom = lat - delta;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lon}`;
+  }, [mapCenter]);
 
   const handleFilterClick = () => {
     setDraftMinSeats(appliedMinSeats);
@@ -48,15 +126,19 @@ const Home = () => {
 
   return (
     <div className="app-container bg-background min-h-screen pb-24">
-      {/* Map placeholder */}
+      {/* Live map view */}
       <div className="relative h-56 bg-secondary overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-secondary/50 to-background" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="w-8 h-8 text-primary mx-auto mb-1" />
-            <p className="text-xs text-muted-foreground">Map View</p>
-          </div>
+        <iframe
+          title="Live location map"
+          src={mapEmbedUrl}
+          className="absolute inset-0 h-full w-full border-0"
+          loading="lazy"
+        />
+
+        <div className="absolute top-3 left-3 max-w-[70%] rounded-lg bg-background/90 px-2 py-1.5 text-[10px] font-semibold text-foreground">
+          {isLocating ? "Detecting your location..." : locationLabel}
         </div>
+
         {/* Search bar */}
         <div className="absolute bottom-4 left-4 right-16">
           <button
