@@ -147,6 +147,15 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
     refreshInFlightRef.current = true;
     setIsLoading(true);
     try {
+      // Ensure session is renewed before firing protected parallel requests.
+      const hydratedUser = await hydrateCurrentUser();
+      if (!hydratedUser?.id) {
+        setRides([]);
+        setRequests([]);
+        setNotifications([]);
+        return;
+      }
+
       const [allRides, incoming, mine, notificationResponse] = await Promise.all([
         apiRequest<ApiResponse<Ride[]>>("/rides"),
         apiRequest<ApiResponse<RideRequest[]>>("/requests/incoming"),
@@ -193,7 +202,9 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    void refreshData();
+    void refreshData().catch(() => {
+      // Initial auth/data sync can fail during token rotation; UI recovers on next auth event.
+    });
   }, [refreshData]);
 
   useEffect(() => {

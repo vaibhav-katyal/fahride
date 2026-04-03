@@ -325,21 +325,18 @@ export const cancelMyBooking = asyncHandler(async (req: AuthenticatedRequest, re
       body: `A booking for ${request.seatsRequested} seat(s) on ${ride.from} to ${ride.to} was cancelled.`,
       link: `/ride/${request.ride}`,
     });
-
-    emitToUser(String(request.rideOwner), "ride-request-updated", {
-      kind: "cancelled",
-      requestId: String(request._id),
-      rideId: String(request.ride),
-    });
   }
 
-  emitToUser(String(request.requester), "ride-request-updated", {
+  await RideRequestModel.deleteOne({ _id: request._id });
+
+  const cancelPayload = {
     kind: "cancelled",
     requestId: String(request._id),
     rideId: String(request.ride),
-  });
+  };
 
-  await RideRequestModel.deleteOne({ _id: request._id });
+  emitToUser(String(request.rideOwner), "ride-request-updated", cancelPayload);
+  emitToUser(String(request.requester), "ride-request-updated", cancelPayload);
 
   res.status(200).json({
     success: true,
