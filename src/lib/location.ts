@@ -32,6 +32,22 @@ const LOCAL_LOCATION_COORDS: Record<string, Coordinate> = {
   "sahibzada ajit singh nagar": [30.7046, 76.7179],
 };
 
+const LOCAL_REFERENCE_COORD: Coordinate = LOCAL_LOCATION_COORDS["chitkara university"];
+const LOCAL_HINT_TERMS = [
+  "punjab",
+  "chandigarh",
+  "mohali",
+  "sahibzada ajit singh nagar",
+  "zirakpur",
+  "zirkapur",
+  "banur",
+  "rajpura",
+  "patiala",
+  "dera bassi",
+  "jhansla",
+  "chitkara",
+];
+
 const titleCase = (value: string) =>
   value
     .split(" ")
@@ -68,6 +84,76 @@ const getLocalSuggestions = (query: string): PlaceSuggestion[] => {
   }));
 };
 
+const hasLocalHint = (name: string) => {
+  const normalized = normalizeLocationText(name);
+  return LOCAL_HINT_TERMS.some((term) => normalized.includes(term));
+};
+
+const parseSuggestionCoord = (item: PlaceSuggestion): Coordinate | null => {
+  const lat = Number.parseFloat(item.lat);
+  const lon = Number.parseFloat(item.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return null;
+  }
+  return [lat, lon];
+};
+
+const isLocalSuggestion = (item: PlaceSuggestion) => {
+  if (hasLocalHint(item.display_name)) {
+    return true;
+  }
+
+  const coords = parseSuggestionCoord(item);
+  if (!coords) {
+    return false;
+  }
+
+  return haversineDistanceKm(coords, LOCAL_REFERENCE_COORD) <= 90;
+};
+
+const scoreSuggestion = (query: string, item: PlaceSuggestion) => {
+  const normalizedQuery = normalizeLocationText(query);
+  const normalizedName = normalizeLocationText(item.display_name);
+  const baseName = normalizeLocationText(getLocationBaseName(item.display_name));
+
+  let score = 0;
+
+  if (baseName === normalizedQuery) score += 120;
+  if (baseName.startsWith(normalizedQuery)) score += 90;
+  if (normalizedName.startsWith(normalizedQuery)) score += 70;
+  if (baseName.includes(normalizedQuery)) score += 55;
+  if (normalizedName.includes(normalizedQuery)) score += 35;
+  if (hasLocalHint(item.display_name)) score += 35;
+
+  const coords = parseSuggestionCoord(item);
+  if (coords) {
+    const distance = haversineDistanceKm(coords, LOCAL_REFERENCE_COORD);
+    score -= Math.min(distance, 160) * 0.35;
+  }
+
+  return score;
+};
+
+const getRankedSuggestions = (query: string, local: PlaceSuggestion[], remote: PlaceSuggestion[]) => {
+  const deduped = new Map<string, PlaceSuggestion>();
+
+  [...local, ...remote].forEach((item) => {
+    const key = normalizeLocationText(item.display_name);
+    if (!deduped.has(key)) {
+      deduped.set(key, item);
+    }
+  });
+
+  const ranked = Array.from(deduped.values()).sort(
+    (a, b) => scoreSuggestion(query, b) - scoreSuggestion(query, a)
+  );
+
+  const localFirst = ranked.filter(isLocalSuggestion);
+  const nonLocal = ranked.filter((item) => !isLocalSuggestion(item));
+
+  return [...localFirst.slice(0, 5), ...nonLocal].slice(0, 8);
+};
+
 export const normalizeLocationText = (value: string) =>
   value
     .toLowerCase()
@@ -79,6 +165,37 @@ export const normalizeLocationText = (value: string) =>
 export const getLocationBaseName = (value: string) => {
   const firstSegment = value.split(",")[0]?.trim() || value.trim();
   return firstSegment;
+};
+
+const extractRegionSuffix = (value: string) => {
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 1) return "";
+
+  const ignored = new Set(["india"]);
+  for (let index = parts.length - 1; index >= 1; index -= 1) {
+    const token = parts[index];
+    const normalized = normalizeLocationText(token);
+    if (!normalized || ignored.has(normalized) || /^\d+$/.test(normalized)) {
+      continue;
+    }
+    return token;
+  }
+
+  return "";
+};
+
+export const getLocationInputLabel = (value: string) => {
+  const baseName = getLocationBaseName(value);
+  const region = extractRegionSuffix(value);
+
+  if (!region) return baseName;
+  if (normalizeLocationText(baseName) === normalizeLocationText(region)) return baseName;
+
+  return `${baseName}, ${region}`;
 };
 
 export const resolveLocationCoordinate = (query: string): Coordinate | null => {
@@ -126,7 +243,7 @@ export const fetchPlaceSuggestions = async (query: string) => {
 
   try {
     const response = await fetch(
-      `${GEO_BASE}/search?q=${encodeURIComponent(trimmed)}&limit=5`,
+      `${GEO_BASE}/search?q=${encodeURIComponent(trimmed)}&limit=8`,
       {
         credentials: "include",
       }
@@ -138,12 +255,13 @@ export const fetchPlaceSuggestions = async (query: string) => {
 
     const payload = (await response.json()) as ApiResponse<PlaceSuggestion[]>;
     const suggestions = payload.data || [];
-    const merged = suggestions.length ? suggestions : local;
+    const merged = getRankedSuggestions(trimmed, local, suggestions);
     suggestionCache.set(normalized, merged);
     return merged;
   } catch {
-    suggestionCache.set(normalized, local);
-    return local;
+    const fallback = getRankedSuggestions(trimmed, local, []);
+    suggestionCache.set(normalized, fallback);
+    return fallback;
   }
 };
 

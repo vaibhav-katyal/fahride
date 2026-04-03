@@ -8,6 +8,7 @@ import {
   fetchPlaceSuggestions,
   getBrowserCurrentLocation,
   getLocationBaseName,
+  getLocationInputLabel,
   reverseGeocode,
   type PlaceSuggestion,
 } from "@/lib/location";
@@ -87,13 +88,13 @@ const PostRide = () => {
   }, [to]);
 
   const applyFromSuggestion = (value: string) => {
-    setFrom(getLocationBaseName(value));
+    setFrom(getLocationInputLabel(value));
     setFromSuggestions([]);
     setActiveField(null);
   };
 
   const applyToSuggestion = (value: string) => {
-    setTo(getLocationBaseName(value));
+    setTo(getLocationInputLabel(value));
     setToSuggestions([]);
     setActiveField(null);
   };
@@ -188,8 +189,13 @@ const PostRide = () => {
   };
 
   return (
-    <div className="app-container bg-background min-h-screen pb-24">
-      <div className="px-4 pt-6">
+    <div className="app-container desktop-premium-page bg-background min-h-screen pb-24 md:pb-8">
+      <div className="pointer-events-none absolute inset-0 hidden overflow-hidden md:block">
+        <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
+        <div className="absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-lime-200/25 blur-3xl" />
+      </div>
+
+      <div className="relative px-4 pt-6 md:px-0 md:pt-0 md:max-w-[86rem] md:mx-auto md:min-h-[calc(100vh-9.5rem)]">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => navigate(-1)} className="text-foreground">
             <ArrowLeft className="w-5 h-5" />
@@ -197,9 +203,9 @@ const PostRide = () => {
           <h1 className="text-xl font-bold text-foreground">Post Ride</h1>
         </div>
 
-        <form onSubmit={handlePost} className="flex flex-col gap-4">
+        <form onSubmit={handlePost} className="flex flex-col gap-4 md:desktop-glass-card md:p-6">
           {/* Route */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4">
             <div className="relative">
               <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
                 <div className="w-2 h-2 rounded-full bg-foreground" />
@@ -285,9 +291,9 @@ const PostRide = () => {
           </div>
 
           {/* Departure */}
-          <div>
+          <div className="md:grid md:grid-cols-2 md:gap-4">
             <label className="text-sm font-semibold text-foreground mb-2 block">Departure</label>
-            <div className="flex gap-3">
+            <div className="flex gap-3 md:col-span-2">
               <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <input

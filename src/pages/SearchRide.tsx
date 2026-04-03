@@ -7,6 +7,7 @@ import { useRideContext } from "@/context/RideContext";
 import {
   fetchPlaceSuggestions,
   getLocationBaseName,
+  getLocationInputLabel,
   normalizeLocationText,
   type PlaceSuggestion,
 } from "@/lib/location";
@@ -79,13 +80,13 @@ const SearchRide = () => {
   }, [to]);
 
   const applyFromSuggestion = (value: string) => {
-    setFrom(getLocationBaseName(value));
+    setFrom(getLocationInputLabel(value));
     setFromSuggestions([]);
     setActiveField(null);
   };
 
   const applyToSuggestion = (value: string) => {
-    setTo(getLocationBaseName(value));
+    setTo(getLocationInputLabel(value));
     setToSuggestions([]);
     setActiveField(null);
   };
@@ -126,9 +127,16 @@ const SearchRide = () => {
     setDraftMaxPricePerMile(null);
   };
 
+  const activeFilterCount = Number(appliedMinSeats > 0) + Number(appliedMaxPricePerMile !== null);
+
   return (
-    <div className="app-container bg-background min-h-screen pb-24">
-      <div className="px-4 pt-6">
+    <div className="app-container desktop-premium-page bg-background min-h-screen pb-24 md:pb-8">
+      <div className="pointer-events-none absolute inset-0 hidden overflow-hidden md:block">
+        <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
+        <div className="absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-cyan-200/25 blur-3xl" />
+      </div>
+
+      <div className="relative px-4 pt-6 md:px-0 md:pt-0 md:max-w-[86rem] md:mx-auto md:min-h-[calc(100vh-9.5rem)] md:flex md:flex-col">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => navigate(-1)} className="text-foreground">
             <ArrowLeft className="w-5 h-5" />
@@ -136,7 +144,7 @@ const SearchRide = () => {
           <h1 className="text-xl font-bold text-foreground">Search</h1>
         </div>
 
-        <div className="flex flex-col gap-3 mb-6">
+        <div className="flex flex-col gap-3 mb-6 md:desktop-glass-card md:p-4">
           <div className="relative">
             <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
               <div className="w-2 h-2 rounded-full bg-foreground" />
@@ -212,20 +220,25 @@ const SearchRide = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 md:desktop-glass-card md:px-4 md:py-3">
           <h2 className="text-lg font-bold text-foreground">Available Rides</h2>
           <button
             type="button"
             onClick={handleFilterClick}
-            className="flex items-center gap-1 text-xs text-muted-foreground"
+            className="flex items-center gap-1 text-xs text-muted-foreground md:rounded-full md:border md:border-border md:bg-background/80 md:px-3 md:py-1.5 md:text-[11px] md:font-semibold md:uppercase md:tracking-[0.12em]"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 md:desktop-soft-grid md:content-start md:flex-1 md:overflow-y-auto md:pb-2">
           {filteredRides.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">No rides found. Try different locations.</p>
+            <p className="text-muted-foreground text-sm text-center py-8 md:col-span-2 lg:col-span-3 md:desktop-glass-card">No rides found. Try different locations.</p>
           ) : (
             filteredRides.map((ride) => {
               const isOwnRide = ride.driverEmail === currentUser.email;
@@ -254,8 +267,8 @@ const SearchRide = () => {
 
       {/* Seat Selection Modal */}
       {selectedRideId && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="w-full bg-card rounded-t-2xl p-4 border border-b-0 border-border pb-24">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center md:p-6">
+          <div className="w-full bg-card rounded-t-2xl p-4 border border-b-0 border-border pb-24 md:max-w-md md:rounded-2xl md:border md:pb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-foreground">How many seats?</h3>
               <button
@@ -311,8 +324,8 @@ const SearchRide = () => {
       )}
 
       {showFilters && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-end" onClick={() => setShowFilters(false)}>
-          <div className="w-full bg-card rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto pb-24 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-end md:items-start md:justify-end" onClick={() => setShowFilters(false)}>
+          <div className="w-full bg-card rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto pb-24 pointer-events-auto md:mt-6 md:mr-6 md:w-[420px] md:max-h-[calc(100vh-3rem)] md:rounded-3xl md:border md:border-border md:pb-6" onClick={(e) => e.stopPropagation()}>
             {/* Handle bar */}
             <div className="flex justify-center mb-6">
               <div className="w-12 h-1.5 bg-muted rounded-full" />

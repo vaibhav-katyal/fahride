@@ -120,8 +120,14 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="app-container flex flex-col bg-background min-h-screen px-6 py-10">
-      <div className="flex items-center gap-1 mb-12">
+    <div className="app-container desktop-premium-page flex flex-col bg-background min-h-screen px-6 py-10 md:items-center md:justify-center">
+      <div className="pointer-events-none absolute inset-0 hidden overflow-hidden md:block">
+        <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-emerald-200/35 blur-3xl" />
+        <div className="absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-cyan-200/30 blur-3xl" />
+      </div>
+
+      <div className="relative md:w-full md:max-w-xl desktop-glass-card md:p-8">
+      <div className="flex items-center gap-1 mb-12 md:mb-8">
         <img
           src="/chitpoo_logo.png"
           alt="Chit Pool Logo"
@@ -145,7 +151,7 @@ const ForgotPassword = () => {
 
       <form
         onSubmit={step === "email" ? handleRequestOtp : step === "otp" ? handleVerifyOtp : handleResetPassword}
-        className="flex flex-col gap-4 flex-1"
+        className="flex flex-col gap-4 flex-1 md:min-h-0"
       >
         {step === "email" && (
           <div className="relative">
@@ -271,6 +277,7 @@ const ForgotPassword = () => {
           </button>
         </p>
       </form>
+      </div>
     </div>
   );
 };

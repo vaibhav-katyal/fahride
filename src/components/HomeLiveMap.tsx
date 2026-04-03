@@ -113,16 +113,16 @@ const HomeLiveMap = ({ currentLocation, locationLabel, isLocating }: HomeLiveMap
     <div className="absolute inset-0 h-full w-full bg-[#eef1f4]">
       <div ref={mapElementRef} className="absolute inset-0 h-full w-full" />
 
-      <div className="pointer-events-none absolute left-3 right-3 top-3 z-[3]">
-        <div className="rounded-2xl border border-black/10 bg-white/92 px-3 py-2 shadow-[0_8px_22px_rgba(17,24,39,0.14)] backdrop-blur-xl">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ef5b7f]">
+      <div className="pointer-events-none absolute left-3 right-3 top-3 z-[3] md:left-6 md:right-auto md:top-6 md:w-[360px]">
+        <div className="rounded-2xl border border-black/10 bg-white/92 px-3 py-2 shadow-[0_8px_22px_rgba(17,24,39,0.14)] backdrop-blur-xl md:rounded-3xl md:px-5 md:py-4 md:shadow-[0_26px_55px_rgba(15,23,42,0.24)]">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ef5b7f] md:text-[11px] md:tracking-[0.2em]">
             <span className="h-2 w-2 rounded-full bg-[#ef5b7f] shadow-[0_0_0_6px_rgba(239,91,127,0.15)]" />
             Live around you
           </div>
-          <p className="mt-1 text-xs font-semibold text-slate-900">
+          <p className="mt-1 text-xs font-semibold text-slate-900 md:mt-2 md:text-sm">
             {isLocating ? "Detecting location..." : locationLabel}
           </p>
-          <p className="mt-0.5 text-[10px] text-slate-500">Nearby rides appear around your live location</p>
+          <p className="mt-0.5 text-[10px] text-slate-500 md:mt-1 md:text-xs">Nearby rides appear around your live location</p>
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ const RideDetail = () => {
 
   if (!ride) {
     return (
-      <div className="app-container bg-background min-h-screen flex items-center justify-center">
+      <div className="app-container desktop-premium-page bg-background min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Ride not found.</p>
       </div>
     );
@@ -106,15 +106,16 @@ const RideDetail = () => {
       : Loader2;
 
   return (
-    <div className="app-container bg-background min-h-screen pb-24">
-      <div className="px-4 pt-6 flex items-center gap-3 mb-4">
+    <div className="app-container desktop-premium-page bg-background min-h-screen pb-24 md:pb-10">
+      <div className="px-4 pt-6 flex items-center gap-3 mb-4 md:px-0 md:pt-0 md:max-w-[86rem] md:mx-auto">
         <button type="button" onClick={() => navigate(-1)} className="text-foreground">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-xl font-bold text-foreground">Ride Details</h1>
       </div>
 
-      <div className="mx-4 h-56 md:h-64 rounded-2xl bg-secondary border border-border overflow-hidden relative mb-4">
+      <div className="mx-4 md:mx-auto md:max-w-[86rem] md:grid md:grid-cols-12 md:gap-5 md:min-h-[430px]">
+      <div className="h-56 md:col-span-7 md:h-full rounded-2xl bg-secondary border border-border overflow-hidden relative mb-4 md:mb-0 md:desktop-glass-card">
         {canViewMap ? (
           <>
             <LiveRideMap
@@ -139,7 +140,7 @@ const RideDetail = () => {
         )}
       </div>
 
-      <div className="mx-4 bg-card rounded-2xl p-4 border border-border mb-4">
+      <div className="bg-card rounded-2xl p-4 border border-border mb-4 md:col-span-5 md:mb-0 md:h-full md:desktop-glass-card">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-foreground font-bold">
@@ -247,8 +248,9 @@ const RideDetail = () => {
           </div>
         </div>
       </div>
+      </div>
 
-      <div className="mx-4 mb-4">
+      <div className="mx-4 mb-4 md:mx-auto md:max-w-[86rem] md:mt-5">
         {isRideOwner ? (
           <div className="bg-card rounded-2xl p-4 border border-border">
             <p className="text-sm font-semibold text-foreground">This is your ride</p>
@@ -288,8 +290,8 @@ const RideDetail = () => {
       </div>
 
       {showSeatSelection && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="w-full bg-card rounded-t-3xl p-6 border border-t border-border pb-24">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center md:p-6">
+          <div className="w-full bg-card rounded-t-3xl p-6 border border-t border-border pb-24 md:max-w-lg md:rounded-3xl md:pb-6">
             <h2 className="text-xl font-bold text-foreground mb-4 text-center">How many seats?</h2>
             <div className="flex gap-2 mb-6">
               {Array.from({ length: ride.seats }, (_, i) => i + 1).map((seat) => (
@@ -328,7 +330,7 @@ const RideDetail = () => {
       )}
 
       {activeRequest?.status === "approved" && id && activeRequest.id && (
-        <div className="mx-4 h-96">
+        <div className="mx-4 h-96 md:mx-auto md:max-w-[86rem] md:h-[420px]">
           <Chat
             rideId={id}
             requestId={activeRequest.id}

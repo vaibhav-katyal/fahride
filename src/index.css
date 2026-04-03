@@ -66,6 +66,18 @@
   .app-container {
     @apply max-w-md mx-auto min-h-screen relative;
   }
+
+  .desktop-premium-page {
+    @apply md:w-full md:max-w-none md:mx-0 md:min-h-screen md:overflow-x-hidden md:px-8 md:pt-24 md:pb-10 lg:px-10;
+  }
+
+  .desktop-glass-card {
+    @apply md:rounded-3xl md:border md:border-white/70 md:bg-white/70 md:shadow-[0_24px_60px_rgba(15,23,42,0.12)] md:backdrop-blur-2xl;
+  }
+
+  .desktop-soft-grid {
+    @apply md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3;
+  }
 }
 
 @keyframes live-map-pulse {
