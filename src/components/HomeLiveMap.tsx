@@ -45,7 +45,7 @@ const HomeLiveMap = ({ currentLocation, locationLabel, isLocating }: HomeLiveMap
 
     if (!mapRef.current) {
       mapRef.current = L.map(mapElementRef.current, {
-        zoomControl: true,
+        zoomControl: false,
         scrollWheelZoom: true,
         dragging: true,
         touchZoom: true,
@@ -113,17 +113,29 @@ const HomeLiveMap = ({ currentLocation, locationLabel, isLocating }: HomeLiveMap
     <div className="absolute inset-0 h-full w-full bg-[#eef1f4]">
       <div ref={mapElementRef} className="absolute inset-0 h-full w-full" />
 
-      <div className="pointer-events-none absolute left-3 right-3 top-3 z-[3] md:left-6 md:right-auto md:top-6 md:w-[360px]">
-        <div className="rounded-2xl border border-black/10 bg-white/92 px-3 py-2 shadow-[0_8px_22px_rgba(17,24,39,0.14)] backdrop-blur-xl md:rounded-3xl md:px-5 md:py-4 md:shadow-[0_26px_55px_rgba(15,23,42,0.24)]">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ef5b7f] md:text-[11px] md:tracking-[0.2em]">
-            <span className="h-2 w-2 rounded-full bg-[#ef5b7f] shadow-[0_0_0_6px_rgba(239,91,127,0.15)]" />
-            Live around you
-          </div>
-          <p className="mt-1 text-xs font-semibold text-slate-900 md:mt-2 md:text-sm">
-            {isLocating ? "Detecting location..." : locationLabel}
-          </p>
-          <p className="mt-0.5 text-[10px] text-slate-500 md:mt-1 md:text-xs">Nearby rides appear around your live location</p>
+      <div className="pointer-events-auto absolute left-3 top-3 z-[999]">
+        <div className="rounded-2xl border border-black/15 bg-white/95 px-4 py-3 shadow-[0_12px_32px_rgba(17,24,39,0.12)] backdrop-blur-lg">
+          <p className="text-sm font-semibold text-slate-900">{isLocating ? "Detecting..." : locationLabel}</p>
         </div>
+      </div>
+
+      <div className="pointer-events-auto absolute right-3 top-3 z-[999] md:right-6 md:top-6">
+        <button
+          type="button"
+          onClick={() => {
+            if (mapRef.current && currentLocation) {
+              mapRef.current.setView(currentLocation as L.LatLngExpression, 15, { animate: true });
+              hasCenteredRef.current = true;
+            }
+          }}
+          disabled={!currentLocation}
+          className="flex items-center justify-center rounded-full border border-black/10 bg-white/92 w-10 h-10 shadow-[0_8px_22px_rgba(17,24,39,0.14)] backdrop-blur-xl transition-colors hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Center map to your location"
+        >
+          <svg className="w-5 h-5 text-slate-700" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c0 1.93-1.57 3.5-3.5 3.5S8.5 12.93 8.5 11 10.07 7.5 12 7.5s3.5 1.57 3.5 3.5z" />
+          </svg>
+        </button>
       </div>
     </div>
   );

@@ -441,7 +441,7 @@ const LiveRideMap = ({ from, to, rideId, requestId, isDriver = false }: LiveRide
           <p className="mt-0.5 text-[10px] text-slate-500">Tap zoom or drag to explore the route</p>
         </div>
 
-        <div className="pointer-events-auto flex flex-col gap-2">
+        <div className="pointer-events-auto flex flex-col gap-2 relative z-[999]">
           <button
             type="button"
             onClick={() => {
@@ -450,9 +450,27 @@ const LiveRideMap = ({ from, to, rideId, requestId, isDriver = false }: LiveRide
               }
             }}
             className="rounded-full border border-black/10 bg-white/92 px-3 py-2 text-[11px] font-semibold text-slate-800 shadow-[0_8px_22px_rgba(17,24,39,0.14)] backdrop-blur-xl transition-colors hover:bg-white"
+            title="View entire route"
           >
             Recenter
           </button>
+          {isDriver && (
+            <button
+              type="button"
+              onClick={() => {
+                if (mapRef.current && currentLocationMarkerRef.current) {
+                  const currentLoc = currentLocationMarkerRef.current.getLatLng();
+                  mapRef.current.setView(currentLoc, 16, { animate: true });
+                }
+              }}
+              className="flex items-center justify-center rounded-full border border-black/10 bg-white/92 w-10 h-10 shadow-[0_8px_22px_rgba(17,24,39,0.14)] backdrop-blur-xl transition-colors hover:bg-white"
+              title="Center map to your location"
+            >
+              <svg className="w-5 h-5 text-slate-700" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c0 1.93-1.57 3.5-3.5 3.5S8.5 12.93 8.5 11 10.07 7.5 12 7.5s3.5 1.57 3.5 3.5z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
