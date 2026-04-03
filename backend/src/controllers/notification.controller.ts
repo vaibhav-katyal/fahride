@@ -61,3 +61,16 @@ export const markNotificationAsRead = asyncHandler(async (req: AuthenticatedRequ
     data: mapNotification(notification.toObject()),
   });
 });
+
+export const deleteAllNotifications = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user?.id) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  await NotificationModel.deleteMany({ recipient: req.user.id });
+
+  res.status(200).json({
+    success: true,
+    message: "All notifications cleared",
+  });
+});

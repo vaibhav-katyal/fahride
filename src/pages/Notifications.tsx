@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, CheckCheck, CircleAlert, MessageCircle, Ticket, Loader2 } from "lucide-react";
+import { ArrowLeft, Bell, CheckCheck, CircleAlert, MessageCircle, Ticket, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -8,9 +8,24 @@ import { toast } from "sonner";
 
 const Notifications = () => {
   const navigate = useNavigate();
-  const { notifications, requests, markNotificationRead, approveRequest, rejectRequest } = useRideContext();
+  const { notifications, requests, markNotificationRead, approveRequest, rejectRequest, deleteAllNotifications } = useRideContext();
   const [actioningNotificationId, setActioningNotificationId] = useState<string | null>(null);
   const [resolvedActions, setResolvedActions] = useState<Record<string, "approved" | "rejected">>({});
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearAll = async () => {
+    setIsClearing(true);
+    try {
+      const result = await deleteAllNotifications();
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const unreadCount = notifications.filter((item) => !item.isRead).length;
 
@@ -56,9 +71,28 @@ const Notifications = () => {
             </button>
             <h1 className="text-xl font-bold text-foreground">Notifications</h1>
           </div>
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            {unreadCount} unread
-          </span>
+          <div className="flex items-center gap-2">
+            {notifications.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                disabled={isClearing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/15 transition-colors text-xs font-semibold disabled:opacity-50"
+                title="Clear all notifications"
+              >
+                {isClearing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Clear
+                  </>
+                )}
+              </button>
+            )}
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              {unreadCount} unread
+            </span>
+          </div>
         </div>
 
         {notifications.length === 0 ? (

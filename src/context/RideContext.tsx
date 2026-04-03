@@ -67,6 +67,7 @@ interface RideContextType {
   sendMessage: (rideId: string, text: string, senderRole: "requester" | "offerer") => void;
   getMessagesForRide: (rideId: string) => ChatMessage[];
   markNotificationRead: (notificationId: string) => Promise<{ success: boolean; message: string }>;
+  deleteAllNotifications: () => Promise<{ success: boolean; message: string }>;
   currentUser: {
     id?: string;
     name: string;
@@ -423,6 +424,23 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  const deleteAllNotifications = useCallback(async () => {
+    try {
+      await apiRequest(`/notifications/delete-all`, {
+        method: "DELETE",
+      });
+
+      setNotifications([]);
+
+      return { success: true, message: "All notifications cleared" };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        return { success: false, message: error.message };
+      }
+      return { success: false, message: "Failed to clear notifications" };
+    }
+  }, []);
+
   const getRequestForRide = useCallback(
     (rideId: string) =>
       requests.find(
@@ -480,6 +498,7 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
         sendMessage,
         getMessagesForRide,
         markNotificationRead,
+        deleteAllNotifications,
         currentUser,
       }}
     >
