@@ -1,8 +1,22 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import carpoolImg from "@/assets/carpool-illustration.png";
+import { AUTH_CHANGED_EVENT, getCurrentUser } from "@/lib/auth";
 
 const Welcome = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getCurrentUser()?.id));
+
+  useEffect(() => {
+    const syncAuth = () => {
+      setIsAuthenticated(Boolean(getCurrentUser()?.id));
+    };
+
+    window.addEventListener(AUTH_CHANGED_EVENT, syncAuth);
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, syncAuth);
+    };
+  }, []);
 
   return (
     <div className="app-container flex flex-col items-center justify-between bg-background px-6 py-10 min-h-screen">
@@ -40,7 +54,7 @@ const Welcome = () => {
       </div>
 
       <button
-        onClick={() => navigate("/login")}
+        onClick={() => navigate(isAuthenticated ? "/home" : "/login")}
         className="bg-primary hover:bg-primary/90 text-primary-foreground w-14 h-14 rounded-xl flex items-center justify-center shadow-lg transition-transform hover:scale-105 mb-6"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -7,6 +7,7 @@ import {
   DollarSign,
   Loader2,
   MapPin,
+  MessageCircle,
   Phone,
   Users,
   XCircle,
@@ -26,6 +27,7 @@ const RideDetail = () => {
 
   const [request, setRequest] = useState<ReturnType<typeof getRequestForRide>>(undefined);
   const [showSeatSelection, setShowSeatSelection] = useState(false);
+  const [showContactOptions, setShowContactOptions] = useState(false);
   const [seatsToRequest, setSeatsToRequest] = useState(1);
 
   const ride = rides.find((r) => r.id === id);
@@ -88,7 +90,57 @@ const RideDetail = () => {
       toast.info("Driver number will be visible after your booking is approved.");
       return;
     }
-    toast.success(`Calling ${ride.driverName}...`);
+
+    const dialTarget = resolvedDriverPhone.replace(/[^\d+]/g, "").trim();
+    const digitOnly = resolvedDriverPhone.replace(/\D/g, "");
+    const whatsappTarget =
+      digitOnly.length === 10 ? `91${digitOnly}` : digitOnly.startsWith("0") ? digitOnly.slice(1) : digitOnly;
+
+    if (!dialTarget || !whatsappTarget) {
+      toast.error("Phone number is unavailable for this ride.");
+      return;
+    }
+
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches;
+
+    if (isDesktop) {
+      const whatsappUrl = `https://wa.me/${whatsappTarget}`;
+      const popup = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      if (!popup) {
+        window.location.href = whatsappUrl;
+      }
+      return;
+    }
+
+    setShowContactOptions(true);
+  };
+
+  const handleDialRedirect = () => {
+    const dialTarget = resolvedDriverPhone.replace(/[^\d+]/g, "").trim();
+    if (!dialTarget) {
+      toast.error("Phone number is unavailable for this ride.");
+      return;
+    }
+    setShowContactOptions(false);
+    window.location.href = `tel:${dialTarget}`;
+  };
+
+  const handleWhatsAppRedirect = () => {
+    const digitOnly = resolvedDriverPhone.replace(/\D/g, "");
+    const whatsappTarget =
+      digitOnly.length === 10 ? `91${digitOnly}` : digitOnly.startsWith("0") ? digitOnly.slice(1) : digitOnly;
+
+    if (!whatsappTarget) {
+      toast.error("Phone number is unavailable for this ride.");
+      return;
+    }
+
+    setShowContactOptions(false);
+    const whatsappUrl = `https://wa.me/${whatsappTarget}`;
+    const popup = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    if (!popup) {
+      window.location.href = whatsappUrl;
+    }
   };
 
   const statusColor =
@@ -329,14 +381,61 @@ const RideDetail = () => {
         </div>
       )}
 
-      {activeRequest?.status === "approved" && id && activeRequest.id && (
+      {showContactOptions && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:hidden">
+          <div className="w-full rounded-t-3xl border border-b-0 border-border bg-card p-5 pb-8">
+            <p className="text-base font-bold text-foreground">Contact {ride.driverName}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Choose how you want to connect</p>
+
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={handleDialRedirect}
+                className="w-full rounded-xl bg-secondary py-3 text-sm font-semibold text-foreground"
+              >
+                Call via Phone Dialer
+              </button>
+              <button
+                type="button"
+                onClick={handleWhatsAppRedirect}
+                className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground"
+              >
+                Open WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowContactOptions(false)}
+                className="w-full rounded-xl border border-border py-3 text-sm font-semibold text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {id && (
         <div className="mx-4 h-96 md:mx-auto md:max-w-[86rem] md:h-[420px]">
-          <Chat
-            rideId={id}
-            requestId={activeRequest.id}
-            driverName={ride.driverName}
-            riderName={activeRequest.requesterName || "Rider"}
-          />
+          {activeRequest?.status === "approved" && activeRequest.id ? (
+            <Chat
+              rideId={id}
+              requestId={activeRequest.id}
+              driverName={ride.driverName}
+              riderName={activeRequest.requesterName || "Rider"}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border bg-card/70 p-6 text-center backdrop-blur-xl">
+              <div>
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Chat is locked for now</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Chat will appear here once the ride is accepted.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
