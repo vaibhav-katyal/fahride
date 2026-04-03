@@ -22,6 +22,16 @@ const Chat = ({ rideId, requestId, driverName, riderName, driverEmail, riderEmai
   const messagesEnd = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<number | null>(null);
   const lastReadRef = useRef<{ lastReadByDriver?: string; lastReadByRider?: string }>({});
+  const lastNotifiedMessageRef = useRef<string>("");
+  const chatLoadedAtRef = useRef<number>(Date.now());
+  const initialMessagesLoadedRef = useRef(false);
+
+  // Request/ensure notification permission
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
 
   useEffect(() => {
     const loadChatHistory = async () => {
@@ -51,6 +61,9 @@ const Chat = ({ rideId, requestId, driverName, riderName, driverEmail, riderEmai
             timestamp: new Date(message.timestamp),
           }))
         );
+        // Mark that initial messages have been loaded
+        initialMessagesLoadedRef.current = true;
+        chatLoadedAtRef.current = Date.now();
       } catch {
         // If REST history fails, socket join will still try to restore the thread.
       }
@@ -66,6 +79,42 @@ const Chat = ({ rideId, requestId, driverName, riderName, driverEmail, riderEmai
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Send browser notification when message arrives from other party
+  useEffect(() => {
+    // Don't notify during initial load
+    if (!initialMessagesLoadedRef.current || messages.length === 0) return;
+
+    const lastMessage = messages[messages.length - 1];
+
+    // Only notify if message is from the OTHER party (not current user)
+    if (lastMessage.sender.email === currentUser?.email) {
+      return;
+    }
+
+    // Only notify for messages that arrived AFTER chat was loaded
+    // (not historical messages)
+    if (lastMessage.timestamp.getTime() < chatLoadedAtRef.current) {
+      return;
+    }
+
+    // Prevent duplicate notifications for the same message
+    const messageKey = `${rideId}-${lastMessage.sender.email}-${lastMessage.content}`;
+    if (lastNotifiedMessageRef.current === messageKey) {
+      return;
+    }
+    lastNotifiedMessageRef.current = messageKey;
+
+    // Show browser notification
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(`New message from ${lastMessage.sender.name}`, {
+        body: lastMessage.content,
+        icon: "/app-icon.png",
+        tag: `chat-${rideId}`,
+        requireInteraction: false,
+      });
+    }
+  }, [messages, currentUser?.email, rideId]);
 
   useEffect(() => {
     return () => {

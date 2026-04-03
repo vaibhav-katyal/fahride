@@ -6,6 +6,7 @@ import { ChatModel } from "../models/Chat.model.js";
 import { RideModel } from "../models/Ride.model.js";
 import { RideRequestModel } from "../models/RideRequest.model.js";
 import { UserModel } from "../models/User.model.js";
+import { NotificationModel } from "../models/Notification.model.js";
 
 let ioInstance: SocketIOServer | null = null;
 
@@ -260,7 +261,25 @@ export const initializeSocket = (httpServer: Server) => {
             },
           },
           { upsert: true }
-        ).catch(() => {
+        ).then(async () => {
+          // Create notification for the other party
+          const recipientId = userId === driverId ? riderId : driverId;
+          if (recipientId) {
+            try {
+              await NotificationModel.create({
+                recipient: recipientId,
+                actor: userId,
+                ride: rideId,
+                kind: "chat_message",
+                title: `New message from ${message.sender.name}`,
+                body: message.content.substring(0, 100), // First 100 chars
+                link: `/ride/${rideId}`,
+              });
+            } catch {
+              // Silently fail if notification creation fails
+            }
+          }
+        }).catch(() => {
           socket.emit("error", "Message saved with delay. Please retry if needed.");
         });
       } catch (error) {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { io, Socket } from "socket.io-client";
 
@@ -27,6 +27,7 @@ interface SocketContextType {
     timestamp?: string;
     updatedBy?: string;
   } | null;
+  currentChatRideId: string | null;
   sendMessage: (rideId: string, requestId: string, content: string) => boolean;
   joinChat: (rideId: string, requestId: string) => void;
   leaveChat: () => void;
@@ -53,6 +54,15 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [liveRideLocation, setLiveRideLocation] = useState<SocketContextType["liveRideLocation"]>(null);
+  const [currentChatRideId, setCurrentChatRideId] = useState<string | null>(null);
+  const currentUserEmailRef = useRef<string | null>(null);
+
+  // Request browser notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
 
   useEffect(() => {
     const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
@@ -79,7 +89,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     newSocket.on("message", (message: Message) => {
-      setMessages((prev) => [...prev, { ...message, timestamp: new Date(message.timestamp) }]);
+      const parsedMessage = { ...message, timestamp: new Date(message.timestamp) };
+      setMessages((prev) => [...prev, parsedMessage]);
     });
 
     newSocket.on("user-typing", (payload: { userEmail?: string; userId?: string; userName?: string }) => {
@@ -112,10 +123,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const joinChat = useCallback((rideId: string, requestId: string) => {
+    setCurrentChatRideId(rideId);
     socket?.emit("join-chat", { rideId, requestId });
   }, [socket]);
 
   const leaveChat = useCallback(() => {
+    setCurrentChatRideId(null);
     socket?.emit("leave-chat");
   }, [socket]);
 
@@ -161,6 +174,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         isTyping,
         typingUser,
         liveRideLocation,
+        currentChatRideId,
         sendMessage,
         joinChat,
         leaveChat,

@@ -7,7 +7,7 @@ const notificationSchema = new Schema(
     ride: { type: Schema.Types.ObjectId, ref: "Ride", required: true, index: true },
     kind: {
       type: String,
-      enum: ["request_sent", "request_approved", "request_rejected", "booking_cancelled", "ride_deleted"],
+      enum: ["request_sent", "request_approved", "request_rejected", "booking_cancelled", "ride_deleted", "chat_message"],
       required: true,
       index: true,
     },

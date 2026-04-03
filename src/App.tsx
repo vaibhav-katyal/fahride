@@ -220,7 +220,7 @@ const App = () => (
         <SocketProvider>
           <RideProvider>
             <AppRoutes />
-        </RideProvider>
+          </RideProvider>
         </SocketProvider>
         <CookieConsent />
       </BrowserRouter>
