@@ -10,6 +10,7 @@ interface HomeLiveMapProps {
   isLocating: boolean;
   filteredRides?: Ride[];
   rideCoordinates?: Map<string, [number, number]>;
+  currentUser?: { email?: string };
 }
 
 type Coordinate = [number, number];
@@ -40,7 +41,7 @@ const createCurrentLocationIcon = () =>
     iconAnchor: [14, 14],
   });
 
-const HomeLiveMap = ({ currentLocation, locationLabel, isLocating, filteredRides = [], rideCoordinates = new Map() }: HomeLiveMapProps) => {
+const HomeLiveMap = ({ currentLocation, locationLabel, isLocating, filteredRides = [], rideCoordinates = new Map(), currentUser }: HomeLiveMapProps) => {
   const navigate = useNavigate();
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -177,7 +178,11 @@ const HomeLiveMap = ({ currentLocation, locationLabel, isLocating, filteredRides
       {hoveredRideId && filteredRides.find((r) => r.id === hoveredRideId) && (
         <div className="pointer-events-none absolute left-3 bottom-3 z-[500] md:left-6 md:bottom-6 max-w-sm">
           <div className="pointer-events-auto">
-            <RideCard ride={filteredRides.find((r) => r.id === hoveredRideId)!} />
+            {(() => {
+              const ride = filteredRides.find((r) => r.id === hoveredRideId)!;
+              const isOwnRide = currentUser ? ride.driverEmail === currentUser.email : false;
+              return <RideCard ride={ride} isOwnRide={isOwnRide} />;
+            })()}
           </div>
         </div>
       )}

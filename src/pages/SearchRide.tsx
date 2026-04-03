@@ -297,6 +297,7 @@ const SearchRide = () => {
                   key={ride.id}
                   ride={ride}
                   request={request}
+                  isOwnRide={isOwnRide}
                   onRequest={
                     isOwnRide
                       ? undefined

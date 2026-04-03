@@ -250,6 +250,7 @@ const Home = () => {
                 isLocating={isLocating}
                 filteredRides={filteredRides}
                 rideCoordinates={rideCoordinatesRef.current}
+                currentUser={currentUser}
               />
 
               <div className="absolute bottom-4 left-4 right-16 z-[4] md:bottom-6 md:left-6 md:right-24">
@@ -372,6 +373,7 @@ const Home = () => {
                         key={ride.id}
                         ride={ride}
                         request={request}
+                        isOwnRide={isOwnRide}
                         onRequest={
                           isOwnRide
                             ? undefined

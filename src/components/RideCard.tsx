@@ -29,10 +29,12 @@ const RideCard = ({
   ride,
   onRequest,
   request,
+  isOwnRide = false,
 }: {
   ride: Ride;
   onRequest?: () => void;
   request?: RideRequest;
+  isOwnRide?: boolean;
 }) => {
   const navigate = useNavigate();
 
@@ -93,7 +95,11 @@ const RideCard = ({
   return (
     <div
       onClick={() => navigate(`/ride/${ride.id}`)}
-      className="bg-card rounded-2xl p-4 shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow"
+      className={`bg-card rounded-2xl p-4 shadow-sm border border-border cursor-pointer hover:shadow-md transition-all ${
+        isOwnRide
+          ? "grayscale opacity-60 hover:opacity-75"
+          : ""
+      }`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
