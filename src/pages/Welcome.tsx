@@ -260,8 +260,134 @@ const Welcome = () => {
               </button>
             </div>
           </div>
+
+          {/* Footer */}
+          <footer className="border-t border-border/50 bg-card/30 backdrop-blur-sm">
+            <div className="max-w-7xl mx-auto px-6 py-12">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                {/* Brand Column */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <img src="/chitpoo_logo.png" alt="FahRide" width={32} height={32} className="w-8 h-8" />
+                    <span className="text-lg font-bold text-foreground">Fah<span className="text-primary">Ride</span></span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Smart carpooling for Chitkara University students. Save money, reduce emissions, and build community.
+                  </p>
+                </div>
+
+                {/* Quick Links Column */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Quick Links</h4>
+                  <div className="space-y-2 text-sm">
+                    <button
+                      onClick={() => navigate("/login")}
+                      className="block text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => navigate("/signup")}
+                      className="block text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Join Now
+                    </button>
+                  </div>
+                </div>
+
+                {/* Legal Links Column */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Legal</h4>
+                  <div className="space-y-2 text-sm">
+                    <button
+                      onClick={() => navigate("/terms")}
+                      className="block text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Terms & Conditions
+                    </button>
+                    <button
+                      onClick={() => navigate("/privacy")}
+                      className="block text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Privacy Policy
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-border/30 pt-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+                  <p>&copy; 2026 FahRide. All rights reserved. Built for Chitkara University students.</p>
+                  <div className="flex items-center gap-4">
+                  
+                  </div>
+                </div>
+              </div>
+            </div>
+          </footer>
         </div>
       </div>
+
+      {/* Mobile Footer */}
+      <footer className="md:hidden border-t border-border/50 bg-card/30 backdrop-blur-sm">
+        <div className="px-6 py-8 space-y-6">
+          {/* Brand */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <img src="/chitpoo_logo.png" alt="FahRide" width={32} height={32} className="w-8 h-8" />
+              <span className="text-lg font-bold text-foreground">Fah<span className="text-primary">Ride</span></span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Smart carpooling for Chitkara University students. Save money, reduce emissions, and build community.
+            </p>
+          </div>
+
+          {/* Quick Links */}
+          <div className="space-y-2 pt-4 border-t border-border/30">
+            <p className="text-xs font-semibold text-foreground mb-3">Quick Links</p>
+            <div className="space-y-2">
+              <button
+                onClick={() => navigate("/login")}
+                className="w-full text-left text-xs text-muted-foreground hover:text-primary transition-colors py-1"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="w-full text-left text-xs text-muted-foreground hover:text-primary transition-colors py-1"
+              >
+                Join Now
+              </button>
+            </div>
+          </div>
+
+          {/* Legal Links */}
+          <div className="space-y-2 pt-4 border-t border-border/30">
+            <p className="text-xs font-semibold text-foreground mb-3">Legal</p>
+            <div className="space-y-2">
+              <button
+                onClick={() => navigate("/terms")}
+                className="w-full text-left text-xs text-muted-foreground hover:text-primary transition-colors py-1"
+              >
+                Terms & Conditions
+              </button>
+              <button
+                onClick={() => navigate("/privacy")}
+                className="w-full text-left text-xs text-muted-foreground hover:text-primary transition-colors py-1"
+              >
+                Privacy Policy
+              </button>
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="pt-4 border-t border-border/30 space-y-2 text-center">
+            <p className="text-xs text-muted-foreground">&copy; 2026 FahRide. All rights reserved.</p>
+           
+          </div>
+        </div>
+      </footer>
     </>
   );
 };

@@ -22,6 +22,8 @@ import Notifications from "./pages/Notifications";
 import MyRides from "./pages/MyRides";
 import MyBookings from "./pages/MyBookings";
 import NotFound from "./pages/NotFound";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -133,6 +135,14 @@ const AppRoutes = () => {
             <ForgotPassword />
           </PublicOnlyRoute>
         }
+      />
+      <Route
+        path="/terms"
+        element={<TermsAndConditions />}
+      />
+      <Route
+        path="/privacy"
+        element={<PrivacyPolicy />}
       />
 
       <Route
