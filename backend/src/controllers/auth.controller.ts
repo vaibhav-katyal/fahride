@@ -22,7 +22,7 @@ const refreshCookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === "production",
   sameSite: env.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
-  path: "/api/v1/auth",
+  path: "/api/v1",
 };
 
 const accessCookieOptions = {
