@@ -9,77 +9,51 @@ import type { AuthenticatedRequest } from "../middlewares/auth.middleware.js";
 
 const paramToString = (value: unknown) => (typeof value === "string" ? value : "");
 
-type ApprovedRequestSeed = {
-  _id: Types.ObjectId;
-  requester: Types.ObjectId;
-};
-
-const getChatAccess = async (rideId: string, userId: string) => {
-  const ride = await RideModel.findById(rideId).select("owner");
-  if (!ride) {
-    throw new AppError("Ride not found", 404);
-  }
-
-  const isDriver = String(ride.owner) === userId;
-  if (isDriver) {
-    return {
-      ride,
-      isDriver: true,
-      requestForUser: null as ApprovedRequestSeed | null,
-    };
-  }
-
-  const requestForUser = await RideRequestModel.findOne({
-    ride: rideId,
-    requester: userId,
-    status: "approved",
-  })
-    .select("_id requester")
-    .lean<ApprovedRequestSeed>();
-
-  if (!requestForUser) {
-    throw new AppError("Chat is only available for approved requests", 403);
-  }
-
-  return {
-    ride,
-    isDriver: false,
-    requestForUser,
-  };
-};
-
 export const getChatHistory = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user?.id) {
     throw new AppError("Unauthorized", 401);
   }
 
   const rideId = paramToString(req.params.rideId);
-  if (!Types.ObjectId.isValid(rideId)) {
-    throw new AppError("Invalid ride id", 400);
+  const requestId = paramToString(req.params.requestId);
+
+  if (!Types.ObjectId.isValid(rideId) || !Types.ObjectId.isValid(requestId)) {
+    throw new AppError("Invalid ride or request id", 400);
   }
 
-  const { ride, isDriver, requestForUser } = await getChatAccess(rideId, req.user.id);
+  // Verify the ride and request exist and user is involved
+  const ride = await RideModel.findById(rideId);
+  if (!ride) {
+    throw new AppError("Ride not found", 404);
+  }
 
-  const rideChats = await ChatModel.find({ ride: rideId }).sort({ updatedAt: -1 });
-  let chat = rideChats[0];
+  const request = await RideRequestModel.findById(requestId);
+  if (!request || String(request.ride) !== rideId) {
+    throw new AppError("Request not found or doesn't match ride", 404);
+  }
+
+  if (request.status !== "approved") {
+    throw new AppError("Chat is only available for approved requests", 403);
+  }
+
+  const isDriver = String(ride.owner) === req.user.id;
+  const isRider = String(request.requester) === req.user.id;
+
+  if (!isDriver && !isRider) {
+    throw new AppError("You are not involved in this ride", 403);
+  }
+
+  let chat = await ChatModel.findOne({
+    ride: rideId,
+    rideRequest: requestId,
+  });
 
   if (!chat) {
-    const seedRequest =
-      requestForUser ||
-      (await RideRequestModel.findOne({ ride: rideId, status: "approved" })
-        .sort({ createdAt: 1 })
-        .select("_id requester")
-        .lean<ApprovedRequestSeed>());
-
-    if (!seedRequest) {
-      throw new AppError("No approved riders found for this ride", 403);
-    }
-
     chat = await ChatModel.create({
       ride: rideId,
-      rideRequest: seedRequest._id,
+      rideRequest: requestId,
       driver: ride.owner,
-      rider: seedRequest.requester,
+      rider: request.requester,
       messages: [],
     });
   }
@@ -91,14 +65,9 @@ export const getChatHistory = asyncHandler(async (req: AuthenticatedRequest, res
     { $set: isDriver ? { lastReadByDriver: now } : { lastReadByRider: now } }
   );
 
-  const safeMessages = rideChats.length
-    ? rideChats
-        .flatMap((entry) => entry.messages || [])
-        .filter((item) => typeof item.content === "string" && item.content.trim().length > 0)
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    : (chat.messages || []).filter(
-        (item) => typeof item.content === "string" && item.content.trim().length > 0
-      );
+  const safeMessages = (chat.messages || []).filter(
+    (item) => typeof item.content === "string" && item.content.trim().length > 0
+  );
 
   res.status(200).json({
     success: true,
@@ -117,34 +86,42 @@ export const sendMessage = asyncHandler(async (req: AuthenticatedRequest, res: R
     throw new AppError("Unauthorized", 401);
   }
 
-  const { rideId, content } = req.body;
+  const { rideId, requestId, content } = req.body;
 
-  if (!Types.ObjectId.isValid(rideId)) {
-    throw new AppError("Invalid ride id", 400);
+  if (!Types.ObjectId.isValid(rideId) || !Types.ObjectId.isValid(requestId)) {
+    throw new AppError("Invalid ride or request id", 400);
   }
 
   if (!content || content.trim().length === 0) {
     throw new AppError("Message content is required", 400);
   }
 
-  const { ride, requestForUser } = await getChatAccess(rideId, req.user.id);
+  // Verify the ride and request exist and user is involved
+  const ride = await RideModel.findById(rideId);
+  if (!ride) {
+    throw new AppError("Ride not found", 404);
+  }
 
-  const existingChat = await ChatModel.findOne({ ride: rideId }).sort({ updatedAt: -1 });
-  const seedRequest =
-    requestForUser ||
-    (await RideRequestModel.findOne({ ride: rideId, status: "approved" })
-      .sort({ createdAt: 1 })
-      .select("_id requester")
-      .lean<ApprovedRequestSeed>());
+  const request = await RideRequestModel.findById(requestId);
+  if (!request || String(request.ride) !== rideId) {
+    throw new AppError("Request not found or doesn't match ride", 404);
+  }
 
-  if (!existingChat && !seedRequest) {
-    throw new AppError("No approved riders found for this ride", 403);
+  if (request.status !== "approved") {
+    throw new AppError("Chat is only available for approved requests", 403);
+  }
+
+  const isDriver = String(ride.owner) === req.user.id;
+  const isRider = String(request.requester) === req.user.id;
+
+  if (!isDriver && !isRider) {
+    throw new AppError("You are not involved in this ride", 403);
   }
 
   const message = {
     sender: {
       id: req.user.id,
-      name: req.user?.name || "User",
+       name: req.user?.name || "User",
       email: req.user.email || "",
     },
     content: typeof content === "string" ? content.trim() : "",
@@ -152,13 +129,13 @@ export const sendMessage = asyncHandler(async (req: AuthenticatedRequest, res: R
   };
 
   await ChatModel.updateOne(
-    existingChat ? { _id: existingChat._id } : { ride: rideId },
+    { ride: rideId, rideRequest: requestId },
     {
       $setOnInsert: {
         ride: rideId,
-        rideRequest: seedRequest?._id,
+        rideRequest: requestId,
         driver: ride.owner,
-        rider: seedRequest?.requester,
+        rider: request.requester,
       },
       $push: { messages: message },
       $set: {

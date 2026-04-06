@@ -601,7 +601,7 @@ const RideDetail = () => {
             <p className="text-sm font-semibold text-foreground">This is your ride</p>
             <p className="text-xs text-muted-foreground mt-1">
               {activeRequest?.status === "approved"
-                ? "Group chat enabled for all approved riders."
+                ? `Chat enabled with ${activeRequest.requesterName}.`
                 : "Approve a request from Notifications to unlock chat."}
             </p>
             <div className="mt-4 flex gap-2">
@@ -1000,6 +1000,10 @@ const RideDetail = () => {
             <Chat
               rideId={id}
               requestId={activeRequest.id}
+              driverName={ride.driverName}
+              riderName={activeRequest.requesterName || "Rider"}
+              driverEmail={ride.driverEmail || ""}
+              riderEmail={activeRequest.requesterEmail || ""}
             />
           ) : (
             <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border bg-card/70 p-6 text-center backdrop-blur-xl">

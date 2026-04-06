@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { io, Socket } from "socket.io-client";
-import { getAccessToken } from "@/lib/auth";
 
 interface Message {
   sender: {
@@ -71,9 +70,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     const newSocket = io(socketBaseUrl, {
       withCredentials: true,
-      auth: (callback) => {
-        callback({ token: getAccessToken() });
-      },
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,

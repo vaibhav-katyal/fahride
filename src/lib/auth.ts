@@ -13,7 +13,6 @@ export const AUTH_CHANGED_EVENT = "poolmate-auth-changed";
 const API_BASE = import.meta.env.VITE_API_URL || "https://fah-ride-dzg3aqhsfsdqh4fy.centralindia-01.azurewebsites.net/api/v1";
 
 let currentUserMemory: UserAccount | null = null;
-let accessTokenMemory = "";
 
 const emitAuthChanged = () => {
   if (typeof window !== "undefined") {
@@ -29,6 +28,7 @@ export const isCollegeEmail = (email: string) =>
 export const sanitizePhone = (value: string) => value.replace(/\D/g, "");
 
 export const setCurrentUserFromAccount = (account: UserAccount, accessToken?: string) => {
+  void accessToken;
   currentUserMemory = {
     id: account.id,
     name: account.name,
@@ -40,14 +40,8 @@ export const setCurrentUserFromAccount = (account: UserAccount, accessToken?: st
     profileImageUrl: account.profileImageUrl || "",
   };
 
-  if (accessToken) {
-    accessTokenMemory = accessToken;
-  }
-
   emitAuthChanged();
 };
-
-export const getAccessToken = () => accessTokenMemory;
 
 export const getCurrentUser = (): UserAccount | null => {
   return currentUserMemory;
@@ -74,27 +68,6 @@ export const hydrateCurrentUser = async () => {
   const meUser = await fetchMe();
   if (meUser) {
     setCurrentUserFromAccount(meUser);
-
-    if (!accessTokenMemory) {
-      const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (refreshResponse.ok) {
-        const refreshPayload = (await refreshResponse.json()) as {
-          data?: {
-            user?: UserAccount;
-            accessToken?: string;
-          };
-        };
-
-        const refreshedUser = refreshPayload.data?.user || meUser;
-        setCurrentUserFromAccount(refreshedUser, refreshPayload.data?.accessToken);
-        return refreshedUser;
-      }
-    }
-
     return meUser;
   }
 
@@ -110,12 +83,7 @@ export const hydrateCurrentUser = async () => {
 
   const refreshedUser = await fetchMe();
   if (refreshedUser) {
-    const refreshPayload = (await refreshResponse.json().catch(() => ({}))) as {
-      data?: {
-        accessToken?: string;
-      };
-    };
-    setCurrentUserFromAccount(refreshedUser, refreshPayload.data?.accessToken);
+    setCurrentUserFromAccount(refreshedUser);
     return refreshedUser;
   }
 
@@ -136,6 +104,5 @@ export const logoutFromServer = async () => {
 
 export const clearSession = () => {
   currentUserMemory = null;
-  accessTokenMemory = "";
   emitAuthChanged();
 };

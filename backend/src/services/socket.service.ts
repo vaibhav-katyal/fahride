@@ -33,7 +33,7 @@ interface RideLocationPayload {
 
 interface ChatMessagePayload {
   rideId: string;
-  requestId?: string;
+  requestId: string;
   content: string;
 }
 
@@ -114,72 +114,38 @@ export const initializeSocket = (httpServer: Server) => {
       return { ok: true as const };
     };
 
-    const authorizeChatAccess = async (rideId: string) => {
-      const ride = await RideModel.findById(rideId).select("owner").lean();
-      if (!ride) {
-        return { ok: false as const, message: "Ride not found" };
-      }
-
-      const isDriver = String(ride.owner) === userId;
-      if (isDriver) {
-        return {
-          ok: true as const,
-          rideOwnerId: String(ride.owner),
-          approvedRequestId: "",
-        };
-      }
-
-      const approvedRequest = await RideRequestModel.findOne({
-        ride: rideId,
-        requester: userId,
-        status: "approved",
-      })
-        .select("_id")
-        .lean();
-
-      if (!approvedRequest) {
-        return { ok: false as const, message: "Chat is only available for approved riders" };
-      }
-
-      return {
-        ok: true as const,
-        rideOwnerId: String(ride.owner),
-        approvedRequestId: String(approvedRequest._id),
-      };
-    };
-
-    const mergeMessagesForRide = async (rideId: string) => {
-      const rideChats = await ChatModel.find({ ride: rideId }).sort({ updatedAt: -1 });
-      if (!rideChats.length) {
-        return { primaryChat: null, messages: [] as Array<{ sender: { id: string; name: string; email: string }; content: string; timestamp: Date }> };
-      }
-
-      const safeMessages = rideChats
-        .flatMap((chat) => chat.messages || [])
-        .filter((item) => typeof item.content === "string" && item.content.trim().length > 0)
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-      return { primaryChat: rideChats[0], messages: safeMessages };
-    };
-
-    // Join chat room: format is "chat:rideId"
-    socket.on("join-chat", async (data: { rideId: string; requestId?: string }) => {
+    // Join chat room: format is "chat:rideId:requestId"
+    socket.on("join-chat", async (data: { rideId: string; requestId: string }) => {
       try {
-        const { rideId } = data;
-        const roomId = `chat:${rideId}`;
+        const { rideId, requestId } = data;
+        const roomId = `chat:${rideId}:${requestId}`;
 
-        const chatAccess = await authorizeChatAccess(rideId);
-        if (!chatAccess.ok) {
-          socket.emit("error", chatAccess.message);
+        // Verify user is authorized
+        const ride = await RideModel.findById(rideId);
+        if (!ride) {
+          socket.emit("error", "Ride not found");
           return;
         }
 
-        const isDriver = chatAccess.rideOwnerId === userId;
+        const request = await RideRequestModel.findById(requestId);
+        if (!request || request.status !== "approved") {
+          socket.emit("error", "Request not found or not approved");
+          return;
+        }
+
+        const isDriver = String(ride.owner) === userId;
+        const isRider = String(request.requester) === userId;
+
+        if (!isDriver && !isRider) {
+          socket.emit("error", "Not authorized");
+          return;
+        }
 
         // Cache chat session details for low-latency message send path.
         socket.data.currentRideId = rideId;
-        socket.data.currentRequestId = chatAccess.approvedRequestId;
-        socket.data.currentDriverId = chatAccess.rideOwnerId;
+        socket.data.currentRequestId = requestId;
+        socket.data.currentDriverId = String(ride.owner);
+        socket.data.currentRiderId = String(request.requester);
 
         if (!socket.data.senderName || !socket.data.senderEmail) {
           const user = await UserModel.findById(userId).select("name email").lean();
@@ -195,39 +161,17 @@ export const initializeSocket = (httpServer: Server) => {
         socket.join(roomId);
         socket.data.currentRoom = roomId;
 
-        // Load and send chat history across all existing chat docs for this ride.
-        const { primaryChat, messages } = await mergeMessagesForRide(rideId);
-
-        let chat = primaryChat;
+        // Load and send chat history
+        let chat = await ChatModel.findOne({ ride: rideId, rideRequest: requestId });
         if (!chat) {
-          const seedRequestId = chatAccess.approvedRequestId || data.requestId;
-          if (!seedRequestId) {
-            socket.emit("error", "Approved ride request not found");
-            return;
-          }
-
-          const seedRequest = await RideRequestModel.findById(seedRequestId).select("requester").lean();
-          if (!seedRequest) {
-            socket.emit("error", "Approved ride request not found");
-            return;
-          }
-
-          chat = await ChatModel.findOneAndUpdate(
-            { ride: rideId, rideRequest: seedRequestId },
-            {
-              $setOnInsert: {
-                ride: rideId,
-                rideRequest: seedRequestId,
-                driver: chatAccess.rideOwnerId,
-                rider: String(seedRequest.requester),
-                messages: [],
-              },
-            },
-            { upsert: true, new: true }
-          );
+          chat = await ChatModel.create({
+            ride: rideId,
+            rideRequest: requestId,
+            driver: ride.owner,
+            rider: request.requester,
+            messages: [],
+          });
         }
-
-        socket.data.currentChatId = String(chat._id);
 
         const now = new Date();
         // Update read marker without validating entire messages array.
@@ -236,8 +180,12 @@ export const initializeSocket = (httpServer: Server) => {
           { $set: isDriver ? { lastReadByDriver: now } : { lastReadByRider: now } }
         );
 
+        const safeMessages = (chat.messages || []).filter(
+          (item) => typeof item.content === "string" && item.content.trim().length > 0
+        );
+
         socket.emit("chat-history", {
-          messages,
+          messages: safeMessages,
           chatId: chat._id,
           lastReadByDriver: isDriver ? now : chat.lastReadByDriver,
           lastReadByRider: isDriver ? chat.lastReadByRider : now,
@@ -256,7 +204,7 @@ export const initializeSocket = (httpServer: Server) => {
     // Send message
     socket.on("new-message", async (data: ChatMessagePayload) => {
       try {
-        const { rideId, content } = data;
+        const { rideId, requestId, content } = data;
 
         if (!content || content.trim().length === 0) {
           socket.emit("error", "Message content is required");
@@ -264,16 +212,16 @@ export const initializeSocket = (httpServer: Server) => {
         }
 
         const currentRideId = socket.data.currentRideId as string | undefined;
+        const currentRequestId = socket.data.currentRequestId as string | undefined;
         const driverId = socket.data.currentDriverId as string | undefined;
-        const currentChatId = socket.data.currentChatId as string | undefined;
+        const riderId = socket.data.currentRiderId as string | undefined;
 
-        if (!currentRideId || currentRideId !== rideId || !currentChatId) {
+        if (!currentRideId || !currentRequestId || currentRideId !== rideId || currentRequestId !== requestId) {
           socket.emit("error", "Join chat before sending messages");
           return;
         }
 
-        const chatAccess = await authorizeChatAccess(rideId);
-        if (!chatAccess.ok || (driverId && chatAccess.rideOwnerId !== driverId)) {
+        if (userId !== driverId && userId !== riderId) {
           socket.emit("error", "Not authorized");
           return;
         }
@@ -289,15 +237,21 @@ export const initializeSocket = (httpServer: Server) => {
         };
 
         // Emit message to room
-        const roomId = `chat:${rideId}`;
+        const roomId = `chat:${rideId}:${requestId}`;
         io.to(roomId).emit("message", {
           ...message,
         });
 
         // Persist asynchronously to keep perceived chat latency minimal.
         void ChatModel.updateOne(
-          { _id: currentChatId },
+          { ride: rideId, rideRequest: requestId },
           {
+            $setOnInsert: {
+              ride: rideId,
+              rideRequest: requestId,
+              driver: driverId,
+              rider: riderId,
+            },
             $push: { messages: message },
             $set: {
               lastMessage: {
@@ -308,35 +262,22 @@ export const initializeSocket = (httpServer: Server) => {
           },
           { upsert: true }
         ).then(async () => {
-          try {
-            const approvedRiders = await RideRequestModel.find({ ride: rideId, status: "approved" })
-              .select("requester")
-              .lean();
-
-            const recipients = new Set<string>();
-            if (chatAccess.rideOwnerId) {
-              recipients.add(chatAccess.rideOwnerId);
+          // Create notification for the other party
+          const recipientId = userId === driverId ? riderId : driverId;
+          if (recipientId) {
+            try {
+              await NotificationModel.create({
+                recipient: recipientId,
+                actor: userId,
+                ride: rideId,
+                kind: "chat_message",
+                title: `New message from ${message.sender.name}`,
+                body: message.content.substring(0, 100), // First 100 chars
+                link: `/ride/${rideId}`,
+              });
+            } catch {
+              // Silently fail if notification creation fails
             }
-            approvedRiders.forEach((item) => {
-              recipients.add(String(item.requester));
-            });
-            recipients.delete(userId);
-
-            if (recipients.size > 0) {
-              await NotificationModel.insertMany(
-                Array.from(recipients).map((recipient) => ({
-                  recipient,
-                  actor: userId,
-                  ride: rideId,
-                  kind: "chat_message",
-                  title: `New message from ${message.sender.name}`,
-                  body: message.content.substring(0, 100),
-                  link: `/ride/${rideId}`,
-                }))
-              );
-            }
-          } catch {
-            // Silently fail if notification creation fails
           }
         }).catch(() => {
           socket.emit("error", "Message saved with delay. Please retry if needed.");
@@ -348,7 +289,7 @@ export const initializeSocket = (httpServer: Server) => {
 
     // Typing indicator
     socket.on("typing", (data: { rideId: string; requestId: string }) => {
-      const roomId = `chat:${data.rideId}`;
+      const roomId = `chat:${data.rideId}:${data.requestId}`;
       socket.to(roomId).emit("user-typing", {
         userId,
         userEmail: socket.data.userEmail,
@@ -358,7 +299,7 @@ export const initializeSocket = (httpServer: Server) => {
 
     // Stop typing
     socket.on("stop-typing", (data: { rideId: string; requestId: string }) => {
-      const roomId = `chat:${data.rideId}`;
+      const roomId = `chat:${data.rideId}:${data.requestId}`;
       socket.to(roomId).emit("user-stop-typing", {
         userId,
       });
@@ -446,9 +387,85 @@ export const initializeSocket = (httpServer: Server) => {
       }
     });
 
+    socket.on("join-live-ride", async (data: { rideId: string; requestId: string }) => {
+      try {
+        const { rideId, requestId } = data;
+        const roomId = `live:${rideId}:${requestId}`;
+
+        const access = await authorizeRideAccess(rideId, requestId);
+        if (!access.ok) {
+          socket.emit("error", access.message);
+          return;
+        }
+
+        socket.data.currentLiveRideId = rideId;
+        socket.data.currentLiveRequestId = requestId;
+        socket.data.currentLiveRoom = roomId;
+        socket.join(roomId);
+
+        const cachedLocation = liveRideCache.get(roomId);
+        if (cachedLocation) {
+          socket.emit("ride-location-update", cachedLocation);
+        }
+
+        socket.to(roomId).emit("live-user-joined", {
+          userId,
+          userEmail: socket.data.userEmail,
+        });
+      } catch {
+        socket.emit("error", "Failed to join live ride room");
+      }
+    });
+
+    socket.on("ride-location:update", async (data: RideLocationPayload) => {
+      try {
+        const { rideId, requestId, lat, lon, heading, speed } = data;
+        const roomId = `live:${rideId}:${requestId}`;
+
+        const currentRideId = socket.data.currentLiveRideId as string | undefined;
+        const currentRequestId = socket.data.currentLiveRequestId as string | undefined;
+        if (!currentRideId || !currentRequestId || currentRideId !== rideId || currentRequestId !== requestId) {
+          socket.emit("error", "Join live ride before sending location");
+          return;
+        }
+
+        const access = await authorizeRideAccess(rideId, requestId);
+        if (!access.ok) {
+          socket.emit("error", access.message);
+          return;
+        }
+
+        const payload = {
+          rideId,
+          requestId,
+          lat,
+          lon,
+          heading,
+          speed,
+          timestamp: data.timestamp || new Date().toISOString(),
+          updatedBy: userId,
+        };
+
+        liveRideCache.set(roomId, payload);
+        io.to(roomId).emit("ride-location-update", payload);
+      } catch {
+        socket.emit("error", "Failed to update live location");
+      }
+    });
+
+    socket.on("leave-live-ride", () => {
+      if (socket.data.currentLiveRoom) {
+        socket.to(socket.data.currentLiveRoom).emit("live-user-left", { userId });
+        socket.leave(socket.data.currentLiveRoom);
+      }
+    });
+
     socket.on("disconnect", () => {
       if (socket.data.currentRoom) {
         socket.to(socket.data.currentRoom).emit("user-left", { userId });
+      }
+      if (socket.data.currentLiveRoom) {
+        socket.to(socket.data.currentLiveRoom).emit("live-user-left", { userId });
       }
       if (socket.data.currentLiveRoom) {
         socket.to(socket.data.currentLiveRoom).emit("live-user-left", { userId });
