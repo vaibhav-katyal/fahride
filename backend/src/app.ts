@@ -20,6 +20,8 @@ export const createApp = () => {
           ? env.CLIENT_ORIGIN
           : true,
       credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization"],
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     })
   );
   app.use(express.json({ limit: "6mb" }));
