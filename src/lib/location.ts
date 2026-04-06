@@ -13,7 +13,7 @@ type ApiResponse<T> = {
   message?: string;
 };
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const API_BASE = import.meta.env.VITE_API_URL || "https://fah-ride-dzg3aqhsfsdqh4fy.centralindia-01.azurewebsites.net/api/v1";
 const GEO_BASE = `${API_BASE}/geo`;
 const suggestionCache = new Map<string, PlaceSuggestion[]>();
 const coordinateCache = new Map<string, Coordinate>();

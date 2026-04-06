@@ -10,7 +10,7 @@ export interface UserAccount {
 }
 
 export const AUTH_CHANGED_EVENT = "poolmate-auth-changed";
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const API_BASE = import.meta.env.VITE_API_URL || "https://fah-ride-dzg3aqhsfsdqh4fy.centralindia-01.azurewebsites.net/api/v1";
 
 let currentUserMemory: UserAccount | null = null;
 
