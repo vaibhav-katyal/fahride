@@ -20,15 +20,15 @@ const authTokens = (userId: string, email: string, role: "user" | "admin") => ({
 
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: env.NODE_ENV === "production",
-  sameSite: env.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
+  secure: true,
+  sameSite: "none" as const,
   path: "/api/v1",
 };
 
 const accessCookieOptions = {
   httpOnly: true,
-  secure: env.NODE_ENV === "production",
-  sameSite: env.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
+  secure: true,
+  sameSite: "none" as const,
   path: "/",
 };
 
