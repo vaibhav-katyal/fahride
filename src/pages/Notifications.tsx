@@ -1,5 +1,5 @@
 import { ArrowLeft, Bell, CheckCheck, CircleAlert, MessageCircle, Ticket, Loader2, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
@@ -8,10 +8,14 @@ import { toast } from "sonner";
 
 const Notifications = () => {
   const navigate = useNavigate();
-  const { notifications, requests, markNotificationRead, approveRequest, rejectRequest, deleteAllNotifications } = useRideContext();
+  const { notifications, requests, markNotificationRead, approveRequest, rejectRequest, deleteAllNotifications, refreshData } = useRideContext();
   const [actioningNotificationId, setActioningNotificationId] = useState<string | null>(null);
   const [resolvedActions, setResolvedActions] = useState<Record<string, "approved" | "rejected">>({});
   const [isClearing, setIsClearing] = useState(false);
+
+  useEffect(() => {
+    void refreshData();
+  }, [refreshData]);
 
   const handleClearAll = async () => {
     setIsClearing(true);

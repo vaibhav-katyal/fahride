@@ -13,6 +13,8 @@ import {
   Phone,
   Users,
   XCircle,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import Chat from "@/components/Chat";
 import BottomNav from "@/components/BottomNav";
@@ -39,7 +41,7 @@ const RideDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { rides, requests, currentUser, sendRequest, getRequestForRide, updateRide, deleteRide, cancelBooking } = useRideContext();
+  const { rides, requests, currentUser, sendRequest, getRequestForRide, updateRide, deleteRide, cancelBooking, approveRequest, rejectRequest } = useRideContext();
 
   const [request, setRequest] = useState<ReturnType<typeof getRequestForRide>>(undefined);
   const [showSeatSelection, setShowSeatSelection] = useState(false);
@@ -57,6 +59,7 @@ const RideDetail = () => {
   const [feedbackKind, setFeedbackKind] = useState<"review" | "report">("review");
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState("");
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   const [editRideForm, setEditRideForm] = useState({
     from: "",
     to: "",
@@ -391,6 +394,34 @@ const RideDetail = () => {
     }
   };
 
+  const handleApproveRequest = async (requestId: string) => {
+    setProcessingRequestId(requestId);
+    try {
+      const result = await approveRequest(requestId);
+      if (!result.success) {
+        toast.error(result.message);
+      } else {
+        toast.success("Request approved!");
+      }
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    setProcessingRequestId(requestId);
+    try {
+      const result = await rejectRequest(requestId);
+      if (!result.success) {
+        toast.error(result.message);
+      } else {
+        toast.success("Request rejected");
+      }
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
   const statusColor =
     request?.status === "approved"
       ? "text-primary"
@@ -570,7 +601,7 @@ const RideDetail = () => {
             <p className="text-sm font-semibold text-foreground">This is your ride</p>
             <p className="text-xs text-muted-foreground mt-1">
               {activeRequest?.status === "approved"
-                ? `Chat enabled with ${activeRequest.requesterName}.`
+                ? "Group chat enabled for all approved riders."
                 : "Approve a request from Notifications to unlock chat."}
             </p>
             <div className="mt-4 flex gap-2">
@@ -630,6 +661,82 @@ const RideDetail = () => {
                   ? "Cancel request"
                   : "Cancel booking"}
               </button>
+            )}
+          </div>
+        )}
+
+        {isRideOwner && (
+          <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Booking Requests</p>
+                <p className="text-xs text-muted-foreground">Manage incoming ride requests</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1">
+                <Users className="w-4 h-4 text-foreground" />
+                <span className="text-xs font-semibold text-foreground">{requests.filter(r => r.rideId === id).length}</span>
+              </div>
+            </div>
+
+            {requests.filter(r => r.rideId === id).length === 0 ? (
+              <p className="text-xs text-muted-foreground">No requests yet for this ride.</p>
+            ) : (
+              <div className="space-y-2">
+                {requests.filter(r => r.rideId === id).map((req) => (
+                  <div key={req.id} className="rounded-xl border border-border bg-background p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-semibold text-foreground truncate">{req.requesterName}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                            req.status === "pending" ? "bg-yellow-500/10 text-yellow-700" :
+                            req.status === "approved" ? "bg-primary/10 text-primary" :
+                            "bg-destructive/10 text-destructive"
+                          }`}>
+                            {req.status === "pending" ? "Pending" : req.status === "approved" ? "Approved" : "Rejected"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{req.requesterEmail}</p>
+                        <div className="mt-2 flex items-center gap-2 text-xs text-foreground">
+                          <Users className="w-3 h-3" />
+                          <span>{req.seatsRequested} seats requested</span>
+                        </div>
+                      </div>
+
+                      {req.status === "pending" && (
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleApproveRequest(req.id)}
+                            disabled={processingRequestId === req.id}
+                            className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-60"
+                            title="Approve request"
+                          >
+                            {processingRequestId === req.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <ThumbsUp className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRejectRequest(req.id)}
+                            disabled={processingRequestId === req.id}
+                            className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-60"
+                            title="Reject request"
+                          >
+                            {processingRequestId === req.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <ThumbsDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -893,10 +1000,6 @@ const RideDetail = () => {
             <Chat
               rideId={id}
               requestId={activeRequest.id}
-              driverName={ride.driverName}
-              riderName={activeRequest.requesterName || "Rider"}
-              driverEmail={ride.driverEmail || ""}
-              riderEmail={activeRequest.requesterEmail || ""}
             />
           ) : (
             <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border bg-card/70 p-6 text-center backdrop-blur-xl">

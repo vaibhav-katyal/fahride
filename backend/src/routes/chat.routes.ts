@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(requireAuth);
 
+router.get("/:rideId", getChatHistory);
 router.get("/:rideId/:requestId", getChatHistory);
 router.post("/send", sendMessage);
 

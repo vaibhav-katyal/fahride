@@ -138,40 +138,51 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshData = useCallback(async () => {
     if (refreshInFlightRef.current) return;
-    if (!currentUser?.id) {
-      setRides([]);
-      setRequests([]);
-      setNotifications([]);
-      return;
-    }
 
     refreshInFlightRef.current = true;
     setIsLoading(true);
     try {
-      // Ensure session is renewed before firing protected parallel requests.
-      const hydratedUser = await hydrateCurrentUser();
-      if (!hydratedUser?.id) {
+      let activeUser = currentUser;
+
+      // Resolve current user before firing protected requests.
+      if (!activeUser?.id) {
+        const hydratedUser = await hydrateCurrentUser();
+        if (hydratedUser) {
+          activeUser = hydratedUser;
+          setCurrentUser(hydratedUser);
+        }
+      }
+
+      if (!activeUser?.id) {
         setRides([]);
         setRequests([]);
         setNotifications([]);
         return;
       }
 
-      const [allRides, incoming, mine, notificationResponse] = await Promise.all([
+      const [allRidesResult, incomingResult, mineResult, notificationResult] = await Promise.allSettled([
         apiRequest<ApiResponse<Ride[]>>("/rides"),
         apiRequest<ApiResponse<RideRequest[]>>("/requests/incoming"),
         apiRequest<ApiResponse<RideRequest[]>>("/requests/mine"),
         apiRequest<ApiResponse<NotificationItem[]>>("/notifications"),
       ]);
 
-      const rideMap = new Map<string, Ride>();
-      allRides.data.forEach((ride) => {
-        rideMap.set(ride.id, ride);
-      });
+      if (allRidesResult.status === "fulfilled") {
+        const rideMap = new Map<string, Ride>();
+        allRidesResult.value.data.forEach((ride) => {
+          rideMap.set(ride.id, ride);
+        });
+        setRides(Array.from(rideMap.values()));
+      }
 
-      setRides(Array.from(rideMap.values()));
-      setRequests(mergeRequests([...(incoming.data || []), ...(mine.data || [])]));
-      setNotifications(notificationResponse.data || []);
+      const incomingRequests =
+        incomingResult.status === "fulfilled" ? (incomingResult.value.data || []) : [];
+      const myRequests = mineResult.status === "fulfilled" ? (mineResult.value.data || []) : [];
+      setRequests(mergeRequests([...incomingRequests, ...myRequests]));
+
+      if (notificationResult.status === "fulfilled") {
+        setNotifications(notificationResult.value.data || []);
+      }
     } finally {
       refreshInFlightRef.current = false;
       setIsLoading(false);

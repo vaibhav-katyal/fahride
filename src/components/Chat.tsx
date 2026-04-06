@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Loader2, CheckCheck, Check } from "lucide-react";
+import { Send, Loader2, Check } from "lucide-react";
 import { useSocket } from "@/context/SocketContext";
 import { useRideContext } from "@/context/RideContext";
 import { apiRequest } from "@/lib/api";
@@ -8,20 +8,15 @@ import { toast } from "sonner";
 interface ChatProps {
   rideId: string;
   requestId: string;
-  driverName: string;
-  riderName: string;
-  driverEmail: string;
-  riderEmail: string;
 }
 
-const Chat = ({ rideId, requestId, driverName, riderName, driverEmail, riderEmail }: ChatProps) => {
+const Chat = ({ rideId, requestId }: ChatProps) => {
   const { messages, setMessages, sendMessage, joinChat, leaveChat, isTyping, typingUser, socket } = useSocket();
   const { currentUser } = useRideContext();
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<number | null>(null);
-  const lastReadRef = useRef<{ lastReadByDriver?: string; lastReadByRider?: string }>({});
   const lastNotifiedMessageRef = useRef<string>("");
   const chatLoadedAtRef = useRef<number>(Date.now());
   const initialMessagesLoadedRef = useRef(false);
@@ -50,10 +45,6 @@ const Chat = ({ rideId, requestId, driverName, riderName, driverEmail, riderEmai
         }>(`/chat/${rideId}/${requestId}`);
 
         const historyMessages = response.data?.messages || [];
-        lastReadRef.current = {
-          lastReadByDriver: response.data?.lastReadByDriver,
-          lastReadByRider: response.data?.lastReadByRider,
-        };
         setMessages(
           historyMessages.map((message) => ({
             sender: message.sender,
@@ -153,12 +144,6 @@ const Chat = ({ rideId, requestId, driverName, riderName, driverEmail, riderEmai
     }, 1000);
   };
 
-  const otherPartyReadAt = currentUser.email === driverEmail
-    ? lastReadRef.current.lastReadByRider
-    : currentUser.email === riderEmail
-      ? lastReadRef.current.lastReadByDriver
-      : undefined;
-
   const typingLabel = typingUser && typingUser !== currentUser.email ? `${typingUser} is typing...` : "";
 
   return (
@@ -166,13 +151,11 @@ const Chat = ({ rideId, requestId, driverName, riderName, driverEmail, riderEmai
       {/* Header */}
       <div className="border-b border-border px-4 py-4 flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-foreground">Chat</h3>
-          <p className="text-xs text-muted-foreground">
-            {currentUser?.name === driverName ? riderName : driverName}
-          </p>
-          {(typingLabel || otherPartyReadAt) && (
+          <h3 className="font-semibold text-foreground">Ride Group Chat</h3>
+          <p className="text-xs text-muted-foreground">Driver and all approved riders can chat here.</p>
+          {typingLabel && (
             <p className="mt-1 text-[11px] text-muted-foreground">
-              {typingLabel || (otherPartyReadAt ? `Seen ${new Date(otherPartyReadAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "")}
+              {typingLabel}
             </p>
           )}
         </div>
@@ -210,12 +193,7 @@ const Chat = ({ rideId, requestId, driverName, riderName, driverEmail, riderEmai
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
-                  {msg.sender.email === currentUser?.email && otherPartyReadAt && new Date(msg.timestamp).getTime() <= new Date(otherPartyReadAt).getTime() && (
-                    <span className="ml-2 inline-flex items-center gap-1">
-                      <CheckCheck className="h-3 w-3" /> Seen
-                    </span>
-                  )}
-                  {msg.sender.email === currentUser?.email && !otherPartyReadAt && (
+                  {msg.sender.email === currentUser?.email && (
                     <span className="ml-2 inline-flex items-center gap-1">
                       <Check className="h-3 w-3" /> Sent
                     </span>

@@ -1,6 +1,6 @@
-import { clearSession } from "./auth";
+import { clearSession, setCurrentUserFromAccount } from "./auth";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const API_BASE = import.meta.env.VITE_API_URL || "https://fah-ride-dzg3aqhsfsdqh4fy.centralindia-01.azurewebsites.net/api/v1";
 
 // ETag cache: stores the last ETag for each endpoint
 const eTagCache = new Map<string, string>();
@@ -25,7 +25,31 @@ const refreshSession = async () => {
       method: "POST",
       credentials: "include",
     })
-      .then((response) => response.ok)
+      .then(async (response) => {
+        if (!response.ok) return false;
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          data?: {
+            user?: {
+              id?: string;
+              name: string;
+              email: string;
+              phone: string;
+              branch?: string;
+              year?: string;
+              role?: "user" | "admin";
+              profileImageUrl?: string;
+            };
+            accessToken?: string;
+          };
+        };
+
+        if (payload.data?.user) {
+          setCurrentUserFromAccount(payload.data.user, payload.data.accessToken);
+        }
+
+        return true;
+      })
       .finally(() => {
         refreshPromise = null;
       });

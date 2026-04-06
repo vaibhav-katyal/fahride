@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { io, Socket } from "socket.io-client";
+import { getAccessToken } from "@/lib/auth";
 
 interface Message {
   sender: {
@@ -65,11 +66,14 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+    const rawApiUrl = import.meta.env.VITE_API_URL || "https://fah-ride-dzg3aqhsfsdqh4fy.centralindia-01.azurewebsites.net/api/v1";
     const socketBaseUrl = rawApiUrl.replace(/\/api\/v1\/?$/, "");
 
     const newSocket = io(socketBaseUrl, {
       withCredentials: true,
+      auth: (callback) => {
+        callback({ token: getAccessToken() });
+      },
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
