@@ -305,25 +305,25 @@ const PostRide = () => {
           </div>
 
           {/* Departure */}
-          <div className="md:grid md:grid-cols-2 md:gap-4">
+          <div>
             <label className="text-sm font-semibold text-foreground mb-2 block">Departure</label>
-            <div className="flex gap-3 md:col-span-2">
+            <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="flex-1 bg-transparent text-sm text-foreground focus:outline-none"
+                  className="flex-1 bg-transparent text-sm text-foreground focus:outline-none min-w-0"
                 />
               </div>
               <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
-                <Clock className="w-4 h-4 text-muted-foreground" />
+                <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="flex-1 bg-transparent text-sm text-foreground focus:outline-none"
+                  className="flex-1 bg-transparent text-sm text-foreground focus:outline-none min-w-0"
                 />
               </div>
             </div>
