@@ -5,9 +5,18 @@ const transporter = nodemailer.createTransport({
   host: env.SMTP_HOST,
   port: env.SMTP_PORT,
   secure: env.SMTP_SECURE,
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+  connectionTimeout: 5000,
+  greetingTimeout: 5000,
+  socketTimeout: 7000,
   auth: {
     user: env.SMTP_USER,
     pass: env.SMTP_PASS,
+  },
+  tls: {
+    minVersion: "TLSv1.2",
   },
 });
 
@@ -25,6 +34,7 @@ export const sendOtpEmail = async (to: string, otp: string, purpose: "signup" | 
   };
 
   const subject = subjectMap[purpose];
+  const textContent = `Your FahRide OTP for ${purposeText[purpose]} is ${otp}. It expires in a few minutes.`;
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
@@ -40,6 +50,8 @@ export const sendOtpEmail = async (to: string, otp: string, purpose: "signup" | 
     from: env.SMTP_FROM,
     to,
     subject,
+    text: textContent,
     html: htmlContent,
+    ...(env.SMTP_REPLY_TO ? { replyTo: env.SMTP_REPLY_TO } : {}),
   });
 };

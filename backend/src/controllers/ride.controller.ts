@@ -36,6 +36,7 @@ const mapRidePayload = (ride: RideDocument) => ({
   from: ride.from,
   to: ride.to,
   date: ride.date,
+  repeatDays: ride.repeatDays || [],
   departureTime: ride.departureTime,
   arrivalTime: ride.arrivalTime,
   pricePerSeat: `₹${ride.pricePerSeat}`,
@@ -67,7 +68,7 @@ export const getRides = asyncHandler(async (req: AuthenticatedRequest, res: Resp
   }
 
   const rides = await RideModel.find(query)
-    .select("owner ownerSnapshot from to date departureTime arrivalTime pricePerSeat seatsAvailable carModel carNumberPlate carImageUrl createdAt")
+    .select("owner ownerSnapshot from to date repeatDays departureTime arrivalTime pricePerSeat seatsAvailable carModel carNumberPlate carImageUrl createdAt")
     .sort({ createdAt: -1 })
     .lean();
 
@@ -107,7 +108,7 @@ export const getMyRides = asyncHandler(async (req: AuthenticatedRequest, res: Re
   }
 
   const rides = await RideModel.find({ owner: req.user.id })
-    .select("owner ownerSnapshot from to date departureTime arrivalTime pricePerSeat seatsAvailable carModel carNumberPlate carImageUrl createdAt")
+    .select("owner ownerSnapshot from to date repeatDays departureTime arrivalTime pricePerSeat seatsAvailable carModel carNumberPlate carImageUrl createdAt")
     .sort({ createdAt: -1 })
     .lean();
 

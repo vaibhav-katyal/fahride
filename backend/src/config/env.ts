@@ -18,6 +18,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().min(1),
   SMTP_PASS: z.string().min(1),
   SMTP_FROM: z.string().min(1),
+  SMTP_REPLY_TO: z.string().email().optional(),
   CLIENT_ORIGIN: z.string().min(1),
   OTP_TTL_MINUTES: z.coerce.number().default(10),
   OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().default(60),

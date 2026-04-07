@@ -4,7 +4,8 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock,
-  DollarSign,
+  CalendarDays,
+  IndianRupee,
   Pencil,
   Trash2,
   Loader2,
@@ -26,6 +27,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { apiRequest, ApiError } from "@/lib/api";
 import { isFeatureEnabled } from "@/lib/featureFlags";
+import { getRepeatRideLiveStatus, isRideRequestWindowClosed } from "@/lib/rideTime";
 import { toast } from "sonner";
 
 type DriverReview = {
@@ -83,6 +85,7 @@ const RideDetail = () => {
 
   const ride = rides.find((r) => r.id === id);
   const isRideOwner = ride?.driverEmail === currentUser.email;
+  const isRideLate = ride ? isRideRequestWindowClosed(ride.date, ride.departureTime) : false;
   const requestedRequestId = searchParams.get("requestId");
   const selectedRequest = requestedRequestId
     ? requests.find((r) => r.id === requestedRequestId && r.rideId === id)
@@ -123,7 +126,7 @@ const RideDetail = () => {
       carModel: ride.carModel,
       carNumberPlate: ride.carNumberPlate || "",
       paymentMethod: "Cash",
-      repeatDays: "",
+      repeatDays: ride.repeatDays?.join(", ") || "",
       carImageUrl: ride.carImageUrl || "",
     });
   }, [ride]);
@@ -195,10 +198,19 @@ const RideDetail = () => {
       toast.info("You cannot request your own ride.");
       return;
     }
+    if (isRideLate) {
+      toast.info("Sorry, you are late for this ride.");
+      return;
+    }
     setShowSeatSelection(true);
   };
 
   const handleConfirmRequest = async () => {
+    if (isRideLate) {
+      setShowSeatSelection(false);
+      toast.info("Sorry, you are late for this ride.");
+      return;
+    }
     const result = await sendRequest(ride.id, seatsToRequest);
     setShowSeatSelection(false);
     if (result.success) {
@@ -442,6 +454,15 @@ const RideDetail = () => {
       ? XCircle
       : Loader2;
 
+  const formattedRideDate = ride.date
+    ? new Date(`${ride.date}T00:00:00`).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "Date not set";
+  const repeatRideLiveStatus = getRepeatRideLiveStatus(ride.repeatDays);
+
   return (
     <div className="app-container desktop-premium-page bg-background min-h-screen pb-24 md:pb-10">
       <div className="px-4 pt-6 flex items-center gap-3 mb-4 md:px-0 md:pt-0 md:max-w-[86rem] md:mx-auto">
@@ -590,7 +611,7 @@ const RideDetail = () => {
 
         <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border">
           <div className="flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+            <IndianRupee className="w-3.5 h-3.5 text-muted-foreground" />
             <div>
               <p className="font-bold text-sm text-foreground">{ride.pricePerSeat}</p>
               <p className="text-[10px] text-muted-foreground">per seat</p>
@@ -611,6 +632,29 @@ const RideDetail = () => {
             </div>
           </div>
         </div>
+
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2">
+          <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          <p className="text-xs font-medium text-foreground">Ride date: {formattedRideDate}</p>
+        </div>
+
+        {repeatRideLiveStatus && (
+          <div
+            className={`mt-2 rounded-xl px-3 py-2 ${
+              repeatRideLiveStatus.tone === "live-today"
+                ? "border border-emerald-300/50 bg-emerald-500/10"
+                : "border border-amber-300/50 bg-amber-500/10"
+            }`}
+          >
+            <p
+              className={`text-xs font-medium ${
+                repeatRideLiveStatus.tone === "live-today" ? "text-emerald-700" : "text-amber-700"
+              }`}
+            >
+              {repeatRideLiveStatus.message}
+            </p>
+          </div>
+        )}
       </div>
       </div>
 
@@ -644,13 +688,20 @@ const RideDetail = () => {
             </div>
           </div>
         ) : !request ? (
-          <button
-            type="button"
-            onClick={handleRequest}
-            className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-semibold text-sm hover:bg-primary/90 transition-colors"
-          >
-            Request This Ride
-          </button>
+          isRideLate ? (
+            <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-4 text-center">
+              <p className="text-sm font-semibold text-destructive">Sorry, you are late for this ride.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Request window closed after departure time.</p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleRequest}
+              className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-semibold text-sm hover:bg-primary/90 transition-colors"
+            >
+              Request This Ride
+            </button>
+          )
         ) : (
           <div className="bg-card rounded-2xl p-4 border border-border">
             <div className="flex items-center gap-3">
