@@ -3,6 +3,20 @@ import { z } from "zod";
 
 dotenv.config();
 
+const parseBoolean = (value: unknown) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+
+  return value;
+};
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(5000),
@@ -14,7 +28,7 @@ const envSchema = z.object({
   OTP_SECRET: z.string().min(16),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_SECURE: z.preprocess(parseBoolean, z.boolean().default(false)),
   SMTP_USER: z.string().min(1),
   SMTP_PASS: z.string().min(1),
   SMTP_FROM: z.string().min(1),
@@ -28,3 +42,7 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse(process.env);
+
+if (env.SMTP_SECURE && env.SMTP_PORT !== 465) {
+  throw new Error("SMTP_SECURE=true requires SMTP_PORT=465");
+}
