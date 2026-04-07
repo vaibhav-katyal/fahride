@@ -1,20 +1,22 @@
 import { useState, useEffect } from "react";
 import { Cookie } from "lucide-react";
 import { toast } from "sonner";
+import { COOKIE_CONSENT_KEY } from "@/lib/analytics";
 
 const CookieConsent = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     // Check if user has already made a choice
-    const consent = localStorage.getItem("cookieConsent");
+    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
     if (!consent) {
       setIsVisible(true);
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem("cookieConsent", "accepted");
+    localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
+    window.dispatchEvent(new Event("cookie-consent-changed"));
     setIsVisible(false);
     toast.success("Cookie preferences saved.");
   };
@@ -49,9 +51,10 @@ const CookieConsent = () => {
             {/* Description */}
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
               We use essential cookies for authentication and functional cookies
-              to enhance your experience. Your tokens (access & refresh) are
-              stored in secure, httpOnly cookies. No tracking or analytics
-              cookies are used.
+              to enhance your experience. If you accept, we also enable Google
+              Analytics to understand feature usage and improve the product.
+              Your tokens (access & refresh) are stored in secure, httpOnly
+              cookies.
             </p>
 
             {/* Action buttons */}
