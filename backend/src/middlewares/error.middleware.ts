@@ -25,7 +25,6 @@ export const errorHandler = (
   const payload = {
     success: false,
     message: appError.message,
-    ...(appError.code ? { code: appError.code } : {}),
     ...(process.env.NODE_ENV !== "production" ? { stack: appError.stack } : {}),
   };
 
