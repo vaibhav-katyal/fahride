@@ -35,7 +35,7 @@ const MyRides = () => {
             <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border bg-background/70 p-10 text-center">
               <div>
                 <CarFront className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Aapne abhi tak koi ride post nahi ki hai.</p>
+                <p className="text-sm text-muted-foreground">You haven't posted any ride yet!</p>
               </div>
             </div>
           ) : (
