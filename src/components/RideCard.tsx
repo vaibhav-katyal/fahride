@@ -1,8 +1,7 @@
-import { CalendarDays, Phone, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { MapPin, Phone, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import type { RideRequest } from "@/context/RideContext";
-import { getRepeatRideLiveStatus, isRideRequestWindowClosed } from "@/lib/rideTime";
 
 export interface Ride {
   id: string;
@@ -18,7 +17,6 @@ export interface Ride {
   from: string;
   to: string;
   date?: string;
-  repeatDays?: string[];
   departureTime: string;
   arrivalTime: string;
   pricePerSeat: string;
@@ -39,24 +37,14 @@ const RideCard = ({
   isOwnRide?: boolean;
 }) => {
   const navigate = useNavigate();
-  const isLateRide = isRideRequestWindowClosed(ride.date, ride.departureTime);
-
-  const formattedRideDate = ride.date
-    ? new Date(`${ride.date}T00:00:00`).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "Date not set";
-  const repeatRideLiveStatus = getRepeatRideLiveStatus(ride.repeatDays);
 
   const getButtonState = () => {
     if (!request) {
       return {
-        label: isLateRide ? "Late" : "Request",
+        label: "Request",
         icon: null,
-        disabled: isLateRide,
-        variant: isLateRide ? "late" : "primary",
+        disabled: false,
+        variant: "primary",
       };
     }
 
@@ -101,26 +89,18 @@ const RideCard = ({
     primary: "bg-primary text-primary-foreground hover:bg-primary/90",
     pending: "bg-yellow-600/20 text-yellow-700 dark:text-yellow-400 cursor-not-allowed opacity-75",
     success: "bg-primary text-primary-foreground cursor-not-allowed opacity-75",
-    late: "bg-destructive/10 text-destructive cursor-not-allowed opacity-80",
   };
 
 
   return (
     <div
       onClick={() => navigate(`/ride/${ride.id}`)}
-      className={`relative bg-card rounded-2xl p-4 shadow-sm border border-border cursor-pointer hover:shadow-md transition-all ${
+      className={`bg-card rounded-2xl p-4 shadow-sm border border-border cursor-pointer hover:shadow-md transition-all ${
         isOwnRide
           ? "grayscale opacity-60 hover:opacity-75"
           : ""
       }`}
     >
-      {isLateRide && !request && !isOwnRide && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/70 backdrop-blur-[1px] pointer-events-none">
-          <p className="rounded-full border border-destructive/30 bg-card px-3 py-1 text-[11px] font-semibold text-destructive">
-            Sorry, you are late for this ride.
-          </p>
-        </div>
-      )}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-bold text-sm">
@@ -181,29 +161,6 @@ const RideCard = ({
           </div>
         </div>
       </div>
-
-      <div className="mb-3 flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-2.5 py-1.5">
-        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-        <p className="text-[11px] font-medium text-foreground">{formattedRideDate}</p>
-      </div>
-
-      {repeatRideLiveStatus && (
-        <div
-          className={`mb-3 rounded-lg px-2.5 py-1.5 ${
-            repeatRideLiveStatus.tone === "live-today"
-              ? "border border-emerald-300/50 bg-emerald-500/10"
-              : "border border-amber-300/50 bg-amber-500/10"
-          }`}
-        >
-          <p
-            className={`text-[11px] font-medium ${
-              repeatRideLiveStatus.tone === "live-today" ? "text-emerald-700" : "text-amber-700"
-            }`}
-          >
-            {repeatRideLiveStatus.message}
-          </p>
-        </div>
-      )}
 
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div>

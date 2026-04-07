@@ -13,68 +13,6 @@ import { createRideRequestSchema, updateRequestStatusSchema } from "../validator
 
 const paramToString = (value: unknown) => (typeof value === "string" ? value : "");
 
-const toMinutes = (value: string) => {
-  const [hoursText, minutesText] = value.split(":");
-  const hours = Number.parseInt(hoursText || "", 10);
-  const minutes = Number.parseInt(minutesText || "", 10);
-
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-    return null;
-  }
-
-  return hours * 60 + minutes;
-};
-
-const normalizeLocalDate = (value: string) => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
-  if (!match) {
-    return null;
-  }
-
-  const year = Number.parseInt(match[1], 10);
-  const month = Number.parseInt(match[2], 10) - 1;
-  const day = Number.parseInt(match[3], 10);
-  const date = new Date(year, month, day);
-
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month ||
-    date.getDate() !== day
-  ) {
-    return null;
-  }
-
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
-
-const isRideRequestWindowClosed = (dateText: string, departureTime: string) => {
-  const rideDate = normalizeLocalDate(dateText);
-  if (!rideDate) {
-    return false;
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  if (rideDate.getTime() < today.getTime()) {
-    return true;
-  }
-
-  if (rideDate.getTime() > today.getTime()) {
-    return false;
-  }
-
-  const rideDepartureMinutes = toMinutes(departureTime);
-  if (rideDepartureMinutes === null) {
-    return false;
-  }
-
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  return rideDepartureMinutes <= currentMinutes;
-};
-
 const toRequestPayload = (request: RideRequestDocument, ride?: RideDocument) => ({
   requesterSnapshot: request.requesterSnapshot || {
     name: "Requester",
@@ -128,10 +66,6 @@ export const requestRide = asyncHandler(async (req: AuthenticatedRequest, res: R
 
   if (String(ride.owner) === req.user.id) {
     throw new AppError("You cannot request your own ride", 400);
-  }
-
-  if (isRideRequestWindowClosed(ride.date, ride.departureTime)) {
-    throw new AppError("Sorry, you are late for this ride", 410, "RIDE_REQUEST_WINDOW_CLOSED");
   }
 
   if (ride.seatsAvailable < parsed.seatsRequested) {
@@ -298,19 +232,6 @@ export const updateRequestStatus = asyncHandler(async (req: AuthenticatedRequest
   }
 
   if (status === "approved") {
-    const rideForTimeCheck = await RideModel.findById(request.ride).select("date departureTime seatsAvailable");
-    if (!rideForTimeCheck) {
-      throw new AppError("Ride not found", 404);
-    }
-
-    if (isRideRequestWindowClosed(rideForTimeCheck.date, rideForTimeCheck.departureTime)) {
-      throw new AppError(
-        "Cannot approve request after departure time",
-        410,
-        "RIDE_APPROVAL_WINDOW_CLOSED"
-      );
-    }
-
     const ride = await RideModel.findOneAndUpdate(
       {
         _id: request.ride,

@@ -68,20 +68,6 @@ const sendAuthResponse = (res: Response, user: { _id: unknown; name: string; ema
   };
 };
 
-const sendOtpChallengeEmail = async (email: string, otp: string, purpose: "signup" | "login" | "password-reset") => {
-  try {
-    await sendOtpEmail(email, otp, purpose);
-  } catch (error) {
-    console.error("Failed to send OTP email", {
-      email,
-      purpose,
-      error: error instanceof Error ? error.message : error,
-    });
-    await OtpChallengeModel.deleteMany({ email, purpose });
-    throw new AppError("Failed to send OTP email. Please try again.", 502, "EMAIL_DELIVERY_FAILED");
-  }
-};
-
 export const requestSignupOtp = asyncHandler(async (req: Request, res: Response) => {
   const parsed = requestSignupOtpSchema.parse(req.body);
   const email = parsed.email.toLowerCase();
@@ -122,7 +108,7 @@ export const requestSignupOtp = asyncHandler(async (req: Request, res: Response)
     resendAfter,
   });
 
-  await sendOtpChallengeEmail(email, otp, "signup");
+  await sendOtpEmail(email, otp, "signup");
 
   res.status(201).json({
     success: true,
@@ -229,7 +215,7 @@ export const requestLoginOtp = asyncHandler(async (req: Request, res: Response) 
     resendAfter,
   });
 
-  await sendOtpChallengeEmail(email, otp, "login");
+  await sendOtpEmail(email, otp, "login");
 
   res.status(200).json({
     success: true,
@@ -420,7 +406,7 @@ export const requestPasswordResetOtp = asyncHandler(async (req: Request, res: Re
     resendAfter,
   });
 
-  await sendOtpChallengeEmail(email, otp, "password-reset");
+  await sendOtpEmail(email, otp, "password-reset");
 
   res.status(200).json({
     success: true,
