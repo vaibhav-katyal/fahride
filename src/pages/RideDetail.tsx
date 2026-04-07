@@ -23,6 +23,7 @@ import { useRideContext } from "@/context/RideContext";
 import { getCurrentUser } from "@/lib/auth";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { apiRequest, ApiError } from "@/lib/api";
+import { isFeatureEnabled } from "@/lib/featureFlags";
 import { toast } from "sonner";
 
 type DriverReview = {
@@ -96,6 +97,7 @@ const RideDetail = () => {
   const canSeePhone = isRideOwner || activeRequest?.status === "approved";
   const sessionUser = getCurrentUser();
   const resolvedDriverPhone = ride?.driverPhone || (isRideOwner ? sessionUser?.phone || "" : "");
+  const isChatEnabled = isFeatureEnabled("VITE_CHAT_ENABLED", false);
 
   useEffect(() => {
     if (id) {
@@ -600,9 +602,11 @@ const RideDetail = () => {
           <div className="bg-card rounded-2xl p-4 border border-border">
             <p className="text-sm font-semibold text-foreground">This is your ride</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {activeRequest?.status === "approved"
-                ? `Chat enabled with ${activeRequest.requesterName}.`
-                : "Approve a request from Notifications to unlock chat."}
+              {isChatEnabled
+                ? activeRequest?.status === "approved"
+                  ? `Chat enabled with ${activeRequest.requesterName}.`
+                  : "Approve a request from Notifications to unlock chat."
+                : "Manage ride requests from Notifications."}
             </p>
             <div className="mt-4 flex gap-2">
               <button
@@ -994,7 +998,7 @@ const RideDetail = () => {
         </div>
       )}
 
-      {id && (
+      {isChatEnabled && id && (
         <div className="mx-4 h-96 md:mx-auto md:max-w-[86rem] md:h-[420px]">
           {activeRequest?.status === "approved" && activeRequest.id ? (
             <Chat
