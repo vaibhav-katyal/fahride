@@ -15,6 +15,8 @@ import {
   XCircle,
   ThumbsUp,
   ThumbsDown,
+  Maximize2,
+  X,
 } from "lucide-react";
 import Chat from "@/components/Chat";
 import BottomNav from "@/components/BottomNav";
@@ -61,6 +63,8 @@ const RideDetail = () => {
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [showFullImage, setShowFullImage] = useState(false);
+  const [fullImageUrl, setFullImageUrl] = useState("");
   const [editRideForm, setEditRideForm] = useState({
     from: "",
     to: "",
@@ -541,11 +545,24 @@ const RideDetail = () => {
             )}
           </div>
           {ride.carImageUrl ? (
-            <img
-              src={ride.carImageUrl}
-              alt={`${ride.carModel} car preview`}
-              className="w-full h-36 object-cover rounded-lg border border-border"
-            />
+            <div className="relative">
+              <img
+                src={ride.carImageUrl}
+                alt={`${ride.carModel} car preview`}
+                className="w-full h-36 object-cover rounded-lg border border-border"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setFullImageUrl(ride.carImageUrl);
+                  setShowFullImage(true);
+                }}
+                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-lg transition-colors"
+                title="View full image"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            </div>
           ) : (
             <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border bg-background/60">
               <p className="text-xs text-muted-foreground">Car image will appear here when uploaded.</p>
@@ -994,6 +1011,26 @@ const RideDetail = () => {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showFullImage && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setShowFullImage(false)}
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+              title="Close"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={fullImageUrl}
+              alt="Full car view"
+              className="max-w-full max-h-full object-contain"
+            />
           </div>
         </div>
       )}
