@@ -1,28 +1,28 @@
 import { useState, useEffect } from "react";
-import { X, Cookie } from "lucide-react";
+import { Cookie } from "lucide-react";
 import { toast } from "sonner";
+import { COOKIE_CONSENT_KEY } from "@/lib/analytics";
 
 const CookieConsent = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     // Check if user has already made a choice
-    const consent = localStorage.getItem("cookieConsent");
+    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
     if (!consent) {
       setIsVisible(true);
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem("cookieConsent", "accepted");
+    localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
+    window.dispatchEvent(new Event("cookie-consent-changed"));
     setIsVisible(false);
     toast.success("Cookie preferences saved.");
   };
 
-  const handleReject = () => {
-    localStorage.setItem("cookieConsent", "rejected");
-    setIsVisible(false);
-    toast.info("You can change this in settings anytime.");
+  const handleOutsideClick = () => {
+    toast.info("First accept cookies to continue.");
   };
 
   if (!isVisible) return null;
@@ -32,20 +32,12 @@ const CookieConsent = () => {
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/50 z-40"
-        onClick={() => setIsVisible(false)}
+        onClick={handleOutsideClick}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="bg-card border border-border rounded-xl shadow-2xl max-w-md w-full">
-          {/* Close button */}
-          <button
-            onClick={() => setIsVisible(false)}
-            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
           {/* Content */}
           <div className="p-6 sm:p-8">
             {/* Icon and header */}
@@ -59,19 +51,14 @@ const CookieConsent = () => {
             {/* Description */}
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
               We use essential cookies for authentication and functional cookies
-              to enhance your experience. Your tokens (access & refresh) are
-              stored in secure, httpOnly cookies. No tracking or analytics
-              cookies are used.
+              to enhance your experience. If you accept, we also enable Google
+              Analytics to understand feature usage and improve the product.
+              Your tokens (access & refresh) are stored in secure, httpOnly
+              cookies.
             </p>
 
             {/* Action buttons */}
-            <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-2">
-              <button
-                onClick={handleReject}
-                className="w-full px-4 py-2.5 rounded-lg text-sm font-medium border border-border hover:bg-muted transition-colors text-foreground"
-              >
-                Reject
-              </button>
+            <div className="flex gap-3 sm:gap-2">
               <button
                 onClick={handleAccept}
                 className="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"

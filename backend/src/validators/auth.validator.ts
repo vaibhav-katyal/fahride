@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const collegeEmail = z.string().email().refine((value) => value.endsWith("@chitkara.edu.in"), {
+const collegeEmail = z.string().email().refine((value) => value.endsWith("@chitkara.edu.in") || value.endsWith("@chitkarauniversity.edu.in"), {
   message: "Only Chitkara University email IDs are allowed",
 });
 

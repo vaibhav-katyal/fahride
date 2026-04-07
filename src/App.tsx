@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import AnalyticsTracker from "@/components/AnalyticsTracker";
 import { RideProvider } from "@/context/RideContext";
 import { SocketProvider } from "@/context/SocketContext";
 import CookieConsent from "@/components/CookieConsent";
@@ -227,6 +228,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AnalyticsTracker />
         <SocketProvider>
           <RideProvider>
             <AppRoutes />

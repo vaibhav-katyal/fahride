@@ -45,7 +45,7 @@ const Login = () => {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!isCollegeEmail(normalizedEmail)) {
-      setError("Only Chitkara University email IDs (@chitkara.edu.in) are allowed.");
+      setError("Only Chitkara University email IDs (@chitkara.edu.in or @chitkarauniversity.edu.in) are allowed.");
       return;
     }
 

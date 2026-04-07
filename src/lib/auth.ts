@@ -22,8 +22,10 @@ const emitAuthChanged = () => {
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-export const isCollegeEmail = (email: string) =>
-  normalizeEmail(email).endsWith("@chitkara.edu.in");
+export const isCollegeEmail = (email: string) => {
+  const normalized = normalizeEmail(email);
+  return normalized.endsWith("@chitkara.edu.in") || normalized.endsWith("@chitkarauniversity.edu.in");
+};
 
 export const sanitizePhone = (value: string) => value.replace(/\D/g, "");
 

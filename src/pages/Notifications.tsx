@@ -194,7 +194,7 @@ const Notifications = () => {
                       ) : null}
                     </div>
 
-                    {!effectiveResolution && <div className="mt-4 flex gap-2">
+                    {!effectiveResolution && <div className="mt-4 flex flex-col gap-2 md:flex-row">
                       {canModerateRequest && (
                         <>
                           <button
@@ -218,7 +218,7 @@ const Notifications = () => {
                               }
                             }}
                             disabled={isActioning}
-                            className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                            className="flex-1 rounded-xl bg-primary px-3 py-2 md:px-4 md:py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-60"
                           >
                             {isActioning ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Accept"}
                           </button>
@@ -244,7 +244,7 @@ const Notifications = () => {
                               }
                             }}
                             disabled={isActioning}
-                            className="flex-1 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-xs font-semibold text-destructive disabled:opacity-60"
+                            className="flex-1 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 md:px-4 md:py-2.5 text-xs font-semibold text-destructive disabled:opacity-60"
                           >
                             Reject
                           </button>
@@ -257,7 +257,7 @@ const Notifications = () => {
                           event.stopPropagation();
                           await handleOpenNotification(item);
                         }}
-                        className="flex-1 rounded-xl bg-secondary px-4 py-2.5 text-xs font-semibold text-foreground"
+                        className="flex-1 rounded-xl bg-secondary px-3 py-2 md:px-4 md:py-2.5 text-xs font-semibold text-foreground"
                       >
                         Open
                       </button>
@@ -273,7 +273,7 @@ const Notifications = () => {
                             }
                             toast.success("Marked as read");
                           }}
-                          className="rounded-xl border border-border bg-background px-4 py-2.5 text-xs font-semibold text-foreground"
+                          className="rounded-xl border border-border bg-background px-3 py-2 md:px-4 md:py-2.5 text-xs font-semibold text-foreground"
                         >
                           Mark read
                         </button>

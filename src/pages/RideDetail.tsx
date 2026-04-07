@@ -15,6 +15,8 @@ import {
   XCircle,
   ThumbsUp,
   ThumbsDown,
+  Maximize2,
+  X,
 } from "lucide-react";
 import Chat from "@/components/Chat";
 import BottomNav from "@/components/BottomNav";
@@ -23,6 +25,7 @@ import { useRideContext } from "@/context/RideContext";
 import { getCurrentUser } from "@/lib/auth";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { apiRequest, ApiError } from "@/lib/api";
+import { isFeatureEnabled } from "@/lib/featureFlags";
 import { toast } from "sonner";
 
 type DriverReview = {
@@ -60,6 +63,8 @@ const RideDetail = () => {
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [showFullImage, setShowFullImage] = useState(false);
+  const [fullImageUrl, setFullImageUrl] = useState("");
   const [editRideForm, setEditRideForm] = useState({
     from: "",
     to: "",
@@ -96,6 +101,7 @@ const RideDetail = () => {
   const canSeePhone = isRideOwner || activeRequest?.status === "approved";
   const sessionUser = getCurrentUser();
   const resolvedDriverPhone = ride?.driverPhone || (isRideOwner ? sessionUser?.phone || "" : "");
+  const isChatEnabled = isFeatureEnabled("VITE_CHAT_ENABLED", false);
 
   useEffect(() => {
     if (id) {
@@ -539,11 +545,24 @@ const RideDetail = () => {
             )}
           </div>
           {ride.carImageUrl ? (
-            <img
-              src={ride.carImageUrl}
-              alt={`${ride.carModel} car preview`}
-              className="w-full h-36 object-cover rounded-lg border border-border"
-            />
+            <div className="relative">
+              <img
+                src={ride.carImageUrl}
+                alt={`${ride.carModel} car preview`}
+                className="w-full h-36 object-cover rounded-lg border border-border"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setFullImageUrl(ride.carImageUrl);
+                  setShowFullImage(true);
+                }}
+                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-lg transition-colors"
+                title="View full image"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            </div>
           ) : (
             <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border bg-background/60">
               <p className="text-xs text-muted-foreground">Car image will appear here when uploaded.</p>
@@ -600,9 +619,11 @@ const RideDetail = () => {
           <div className="bg-card rounded-2xl p-4 border border-border">
             <p className="text-sm font-semibold text-foreground">This is your ride</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {activeRequest?.status === "approved"
-                ? `Chat enabled with ${activeRequest.requesterName}.`
-                : "Approve a request from Notifications to unlock chat."}
+              {isChatEnabled
+                ? activeRequest?.status === "approved"
+                  ? `Chat enabled with ${activeRequest.requesterName}.`
+                  : "Approve a request from Notifications to unlock chat."
+                : "Manage ride requests from Notifications."}
             </p>
             <div className="mt-4 flex gap-2">
               <button
@@ -994,7 +1015,27 @@ const RideDetail = () => {
         </div>
       )}
 
-      {id && (
+      {showFullImage && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setShowFullImage(false)}
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+              title="Close"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={fullImageUrl}
+              alt="Full car view"
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+        </div>
+      )}
+
+      {isChatEnabled && id && (
         <div className="mx-4 h-96 md:mx-auto md:max-w-[86rem] md:h-[420px]">
           {activeRequest?.status === "approved" && activeRequest.id ? (
             <Chat

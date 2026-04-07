@@ -25,7 +25,7 @@ const PrivacyPolicy = () => {
         <div className="bg-card/60 rounded-2xl backdrop-blur-sm border border-border/50 p-6 md:p-8 space-y-6">
           {/* Last Updated */}
           <div className="text-sm text-muted-foreground border-l-4 border-primary pl-4">
-            Last updated: April 5, 2026
+            Last updated: April 7, 2026
           </div>
 
           {/* Introduction */}
@@ -166,7 +166,7 @@ const PrivacyPolicy = () => {
               <li><strong>Session Management:</strong> Keeping you logged in across page refreshes</li>
               <li><strong>Authentication:</strong> Storing JWT tokens securely for API requests</li>
               <li><strong>Preferences:</strong> Saving your app settings (language, notifications, etc.)</li>
-              <li><strong>Analytics:</strong> Understanding which features users interact with most</li>
+              <li><strong>Analytics:</strong> Measuring feature usage and page visits after you opt in</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-4">
               You can delete cookies through your browser settings, but this may affect app functionality.
