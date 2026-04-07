@@ -42,7 +42,7 @@ const MyBookings = () => {
           <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border bg-background/70 p-10 text-center">
             <div>
               <BookOpenCheck className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Aapne abhi tak koi ride join nahi ki hai.</p>
+              <p className="text-sm text-muted-foreground">You haven't joined any ride yet!</p>
             </div>
           </div>
         ) : (
