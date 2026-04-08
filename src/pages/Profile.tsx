@@ -3,6 +3,7 @@ import { Car, LogOut, User, Mail, Phone, Pencil, BookOpenCheck, ChevronRight, Ca
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
+import WhatsAppCommunityButton from "@/components/WhatsAppCommunityButton";
 import { useRideContext } from "@/context/RideContext";
 import { logoutFromServer, setCurrentUserFromAccount } from "@/lib/auth";
 import { ApiError, apiRequest } from "@/lib/api";
@@ -204,11 +205,12 @@ const Profile = () => {
             <h1 className="text-xl font-bold text-foreground">Profile</h1>
             <p className="text-xs text-muted-foreground md:text-sm">Manage your account and ride activity</p>
           </div>
-          <div className="hidden items-center gap-2 md:flex">
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+          <div className="flex items-center gap-2">
+            <WhatsAppCommunityButton compact className="rounded-lg px-3 py-2 text-[11px] md:text-xs" />
+            <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 md:inline-flex">
               {myPostedRides.length} offered
             </span>
-            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            <span className="hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 md:inline-flex">
               {myBookedRides.length} booked
             </span>
           </div>
