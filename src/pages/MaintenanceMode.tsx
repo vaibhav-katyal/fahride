@@ -66,7 +66,7 @@ export default function MaintenanceMode() {
                 href="https://chat.whatsapp.com/HzdNLw7gkhbCEpszycId8o"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-300"
+                className="inline-block bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-300"
               >
                 Join Our Community 💬
               </a>
