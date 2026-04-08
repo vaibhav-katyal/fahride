@@ -24,6 +24,17 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().min(1),
   CLOUDINARY_API_KEY: z.string().min(1),
   CLOUDINARY_API_SECRET: z.string().min(1),
+  ADMIN_EMAILS: z.string().default(""),
 });
 
 export const env = envSchema.parse(process.env);
+
+export const getAdminEmails = () => {
+  return env.ADMIN_EMAILS.split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => email.length > 0);
+};
+
+export const isAdminEmail = (email: string) => {
+  return getAdminEmails().includes(email.toLowerCase());
+};

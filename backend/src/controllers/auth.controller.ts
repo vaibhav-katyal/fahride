@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { env } from "../config/env.js";
+import { env, isAdminEmail } from "../config/env.js";
 import { OtpChallengeModel } from "../models/OtpChallenge.model.js";
 import { UserModel } from "../models/User.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -162,7 +162,7 @@ export const verifySignupOtp = asyncHandler(async (req: Request, res: Response) 
     passwordHash: draft.passwordHash,
     branch: draft.branch,
     year: draft.year,
-    role: "user",
+    role: isAdminEmail(email) ? "admin" : "user",
     isVerified: true,
   });
 
@@ -464,6 +464,32 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     message: "Password reset successfully",
     data: {
       email,
+    },
+  });
+});
+
+export const getAllUsers = asyncHandler(async (_req: Request, res: Response) => {
+  const users = await UserModel.find({ role: "user" })
+    .select("id name email phone branch year profileImageUrl createdAt")
+    .sort({ createdAt: -1 });
+
+  const totalUsers = users.length;
+
+  res.status(200).json({
+    success: true,
+    message: "Users fetched successfully",
+    data: {
+      users: users.map((user) => ({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        branch: user.branch,
+        year: user.year,
+        profileImageUrl: user.profileImageUrl || "",
+        createdAt: user.createdAt,
+      })),
+      total: totalUsers,
     },
   });
 });
