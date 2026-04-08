@@ -26,6 +26,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { apiRequest, ApiError } from "@/lib/api";
 import { isFeatureEnabled } from "@/lib/featureFlags";
+import { getRideAvailabilityState, formatRideDate } from "@/lib/rideStatus";
 import { toast } from "sonner";
 
 type DriverReview = {
@@ -83,6 +84,7 @@ const RideDetail = () => {
 
   const ride = rides.find((r) => r.id === id);
   const isRideOwner = ride?.driverEmail === currentUser.email;
+  const availability = ride ? getRideAvailabilityState(ride) : null;
   const requestedRequestId = searchParams.get("requestId");
   const selectedRequest = requestedRequestId
     ? requests.find((r) => r.id === requestedRequestId && r.rideId === id)
@@ -127,6 +129,12 @@ const RideDetail = () => {
       carImageUrl: ride.carImageUrl || "",
     });
   }, [ride]);
+
+  useEffect(() => {
+    if (showSeatSelection && availability && !availability.canRequest) {
+      setShowSeatSelection(false);
+    }
+  }, [availability, showSeatSelection]);
 
   useEffect(() => {
     let active = true;
@@ -190,11 +198,26 @@ const RideDetail = () => {
     );
   }
 
+  const requestCtaLabel =
+    availability?.kind === "last_seat"
+      ? "Grab the last seat"
+      : availability?.kind === "full"
+      ? "Seats full"
+      : availability?.kind === "expired"
+      ? "Ride ended"
+      : "Request This Ride";
+
   const handleRequest = () => {
     if (isRideOwner) {
       toast.info("You cannot request your own ride.");
       return;
     }
+
+    if (!availability?.canRequest) {
+      toast.info(availability?.headline || "This ride is no longer available.");
+      return;
+    }
+
     setShowSeatSelection(true);
   };
 
@@ -478,7 +501,7 @@ const RideDetail = () => {
       </div>
 
       <div className="bg-card rounded-2xl p-4 border border-border mb-4 md:col-span-5 md:mb-0 md:h-full md:desktop-glass-card">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-foreground font-bold">
               {ride.avatar}
@@ -490,13 +513,18 @@ const RideDetail = () => {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handlePhoneClick}
-            className="bg-primary text-primary-foreground w-10 h-10 rounded-xl flex items-center justify-center"
-          >
-            <Phone className="w-4 h-4" />
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={handlePhoneClick}
+              className="bg-primary text-primary-foreground w-10 h-10 rounded-xl flex items-center justify-center"
+            >
+              <Phone className="w-4 h-4" />
+            </button>
+            <div className="text-[10px] font-semibold text-muted-foreground px-2 py-1 rounded-full bg-secondary/60">
+              {formatRideDate(ride.date)}
+            </div>
+          </div>
         </div>
 
         <div className="bg-secondary/50 rounded-xl p-3 mb-3 flex flex-col gap-2">
@@ -644,13 +672,38 @@ const RideDetail = () => {
             </div>
           </div>
         ) : !request ? (
-          <button
-            type="button"
-            onClick={handleRequest}
-            className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-semibold text-sm hover:bg-primary/90 transition-colors"
-          >
-            Request This Ride
-          </button>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            {availability && availability.kind !== "available" && (
+              <div
+                className={`mb-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold shadow-sm ${
+                  availability.kind === "last_seat"
+                    ? "border-amber-200 bg-amber-50/80 text-amber-900"
+                    : "border-rose-200 bg-rose-50/80 text-rose-900"
+                }`}
+              >
+                <span className="text-[10px] uppercase tracking-[0.16em] opacity-80">
+                  {availability.badgeLabel}
+                </span>
+                <span className="h-1 w-1 rounded-full bg-current/40" />
+                <span>{availability.headline}</span>
+              </div>
+            )}
+            {availability?.kind === "expired" && (
+              <p className="mb-3 text-xs text-muted-foreground">{availability.subtext}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleRequest}
+              disabled={availability ? !availability.canRequest : false}
+              className={`w-full rounded-2xl py-4 font-semibold text-sm transition-colors ${
+                availability?.canRequest === false
+                  ? "cursor-not-allowed border border-border bg-background text-muted-foreground opacity-80"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+              }`}
+            >
+              {requestCtaLabel}
+            </button>
+          </div>
         ) : (
           <div className="bg-card rounded-2xl p-4 border border-border">
             <div className="flex items-center gap-3">
