@@ -3,10 +3,11 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 interface MaintenanceContextType {
   isMaintenanceMode: boolean;
   setIsMaintenanceMode: (value: boolean) => void;
-  isProduction: boolean;
 }
 
 const MaintenanceContext = createContext<MaintenanceContextType | undefined>(undefined);
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 // Check if we're in production (not localhost)
 const isProduction = () => {
@@ -16,34 +17,58 @@ const isProduction = () => {
 
 export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   const production = isProduction();
-  
-  const [isMaintenanceMode, setIsMaintenanceModeState] = useState(() => {
-    // Only allow maintenance mode in production
-    if (!production) return false;
-    
-    const stored = localStorage.getItem("maintenanceMode");
-    return stored ? JSON.parse(stored) : false;
-  });
+  const [isMaintenanceMode, setIsMaintenanceModeState] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Wrapper to prevent maintenance mode on localhost
-  const setIsMaintenanceMode = (value: boolean) => {
-    if (production) {
-      setIsMaintenanceModeState(value);
-    } else {
-      // On localhost, always keep it off
-      setIsMaintenanceModeState(false);
+  // Fetch maintenance status from server
+  const fetchMaintenanceStatus = async () => {
+    try {
+      const response = await fetch(`${API_URL}/v1/maintenance/status`);
+      if (response.ok) {
+        const data = await response.json();
+        // Only apply maintenance mode in production
+        if (production) {
+          setIsMaintenanceModeState(data.isMaintenanceMode);
+        }
+      }
+    } catch (error) {
+      console.log("Failed to fetch maintenance status");
     }
   };
 
-  // Update localStorage only in production
+  // Initialize on mount - fetch once
   useEffect(() => {
-    if (production) {
-      localStorage.setItem("maintenanceMode", JSON.stringify(isMaintenanceMode));
+    fetchMaintenanceStatus();
+    setIsInitialized(true);
+  }, [production]);
+
+  // Update maintenance mode and sync with server
+  const setIsMaintenanceMode = async (value: boolean) => {
+    // Prevent setting maintenance mode on localhost
+    if (!production) return;
+
+    setIsMaintenanceModeState(value);
+    
+    try {
+      await fetch(`${API_URL}/v1/maintenance/toggle`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isMaintenanceMode: value }),
+      });
+    } catch (error) {
+      console.log("Failed to update maintenance mode");
     }
-  }, [isMaintenanceMode, production]);
+  };
+
+  // Don't render children until initialized
+  if (!isInitialized) {
+    return null;
+  }
 
   return (
-    <MaintenanceContext.Provider value={{ isMaintenanceMode, setIsMaintenanceMode, isProduction: production }}>
+    <MaintenanceContext.Provider value={{ isMaintenanceMode, setIsMaintenanceMode }}>
       {children}
     </MaintenanceContext.Provider>
   );

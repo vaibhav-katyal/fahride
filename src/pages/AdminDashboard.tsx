@@ -18,9 +18,14 @@ import { useMaintenance } from "@/context/MaintenanceContext";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { isMaintenanceMode, setIsMaintenanceMode, isProduction } = useMaintenance();
+  const { isMaintenanceMode, setIsMaintenanceMode } = useMaintenance();
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingState, setPendingState] = useState<boolean | null>(null);
+
+  // Check if we're in production
+  const isProduction = window.location.hostname !== "localhost" && 
+                       window.location.hostname !== "127.0.0.1" &&
+                       window.location.hostname !== "[::1]";
 
   useEffect(() => {
     const isAuth = sessionStorage.getItem("adminAuthenticated");
