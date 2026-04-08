@@ -9,6 +9,9 @@ import { logoutFromServer, setCurrentUserFromAccount } from "@/lib/auth";
 import { ApiError, apiRequest } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
+const branches = ["CSE", "Mech Engg", "ECE", "Civil", "MBA", "Pharmacy", "Biotech", "BCA", "BBA"];
+const years = ["1st Year", "2nd Year", "3rd Year", "4th Year", "MBA/PhD"];
+
 type ProfileFeedbackItem = {
   id: string;
   rideId: string;
@@ -400,18 +403,30 @@ const Profile = () => {
                 placeholder="Phone number"
                 className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none"
               />
-              <input
+              <select
                 value={profileForm.branch}
                 onChange={(e) => setProfileForm((prev) => ({ ...prev, branch: e.target.value }))}
-                placeholder="Branch"
-                className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none"
-              />
-              <input
+                className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">Select Branch</option>
+                {branches.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+              <select
                 value={profileForm.year}
                 onChange={(e) => setProfileForm((prev) => ({ ...prev, year: e.target.value }))}
-                placeholder="Year"
-                className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none"
-              />
+                className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">Select Year</option>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="mt-4 flex gap-2">

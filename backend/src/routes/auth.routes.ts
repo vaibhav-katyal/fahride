@@ -10,6 +10,7 @@ import {
 	verifySignupOtp,
 	requestPasswordResetOtp,
 	resetPassword,
+	getAllUsers,
 } from "../controllers/auth.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
@@ -25,5 +26,6 @@ router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.get("/me", requireAuth, me);
 router.patch("/me", requireAuth, updateProfile);
+router.get("/admin/users", getAllUsers);
 
 export default router;
