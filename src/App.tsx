@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AnalyticsTracker from "@/components/AnalyticsTracker";
 import { RideProvider } from "@/context/RideContext";
 import { SocketProvider } from "@/context/SocketContext";
+import { MaintenanceProvider, useMaintenance } from "@/context/MaintenanceContext";
 import CookieConsent from "@/components/CookieConsent";
 import { AUTH_CHANGED_EVENT, getCurrentUser, hydrateCurrentUser } from "@/lib/auth";
 import { toast } from "sonner";
@@ -25,6 +26,9 @@ import MyBookings from "./pages/MyBookings";
 import NotFound from "./pages/NotFound";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
+import MaintenanceMode from "./pages/MaintenanceMode";
 
 const queryClient = new QueryClient();
 
@@ -104,118 +108,178 @@ const PublicOnlyRoute = ({
   return <>{children}</>;
 };
 
+const MaintenanceRoute = ({
+  isMaintenanceMode,
+  children,
+}: {
+  isMaintenanceMode: boolean;
+  children: ReactNode;
+}) => {
+  if (isMaintenanceMode) {
+    return <Navigate to="/maintenance" replace />;
+  }
+  return <>{children}</>;
+};
+
 const AppRoutes = () => {
   const { isAuthenticated, isHydrated } = useAuthState();
+  const { isMaintenanceMode } = useMaintenance();
 
   return (
     <Routes>
+      {/* Admin Routes - Not affected by maintenance mode */}
+      <Route path="/admin" element={<AdminLogin />} />
+      <Route path="/v1/admin" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+      {/* Maintenance Mode Route */}
+      <Route path="/maintenance" element={<MaintenanceMode />} />
+
+      {/* Public Routes */}
       <Route
         path="/"
-        element={<Welcome />}
+        element={
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <Welcome />
+          </MaintenanceRoute>
+        }
       />
       <Route
         path="/login"
         element={
-          <PublicOnlyRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <Login />
-          </PublicOnlyRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <PublicOnlyRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <Login />
+            </PublicOnlyRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/signup"
         element={
-          <PublicOnlyRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <Signup />
-          </PublicOnlyRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <PublicOnlyRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <Signup />
+            </PublicOnlyRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/forgot-password"
         element={
-          <PublicOnlyRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <ForgotPassword />
-          </PublicOnlyRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <PublicOnlyRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <ForgotPassword />
+            </PublicOnlyRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/terms"
-        element={<TermsAndConditions />}
+        element={
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <TermsAndConditions />
+          </MaintenanceRoute>
+        }
       />
       <Route
         path="/privacy"
-        element={<PrivacyPolicy />}
+        element={
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <PrivacyPolicy />
+          </MaintenanceRoute>
+        }
       />
 
+      {/* Protected Routes */}
       <Route
         path="/home"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <Home />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <Home />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/search"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <SearchRide />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <SearchRide />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/post-ride"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <PostRide />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <PostRide />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/my-rides"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <MyRides />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <MyRides />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/my-bookings"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <MyBookings />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <MyBookings />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/profile"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <Profile />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <Profile />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/ride/:id"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <RideDetail />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <RideDetail />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="/notifications"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <Notifications />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <Notifications />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
       <Route
         path="*"
         element={
-          <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
-            <NotFound />
-          </ProtectedRoute>
+          <MaintenanceRoute isMaintenanceMode={isMaintenanceMode}>
+            <ProtectedRoute isAuthenticated={isAuthenticated} isHydrated={isHydrated}>
+              <NotFound />
+            </ProtectedRoute>
+          </MaintenanceRoute>
         }
       />
     </Routes>
@@ -228,13 +292,15 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AnalyticsTracker />
-        <SocketProvider>
-          <RideProvider>
-            <AppRoutes />
-          </RideProvider>
-        </SocketProvider>
-        <CookieConsent />
+        <MaintenanceProvider>
+          <AnalyticsTracker />
+          <SocketProvider>
+            <RideProvider>
+              <AppRoutes />
+            </RideProvider>
+          </SocketProvider>
+          <CookieConsent />
+        </MaintenanceProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
