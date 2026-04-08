@@ -13,8 +13,8 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase());
-  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "";
+  const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS).split(",").map(e => e.trim().toLowerCase());
+  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
