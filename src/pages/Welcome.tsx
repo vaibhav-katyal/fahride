@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import carpoolImg from "@/assets/carpool-illustration.png";
 import { AUTH_CHANGED_EVENT, getCurrentUser } from "@/lib/auth";
 import { Users, MapPin, Zap, Leaf, ArrowRight, CheckCircle } from "lucide-react";
+import WhatsAppCommunityButton from "@/components/WhatsAppCommunityButton";
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -33,6 +34,10 @@ const Welcome = () => {
     <>
       {/* Mobile View */}
       <div className="md:hidden app-container flex flex-col items-center justify-between bg-background px-6 py-10 min-h-screen">
+        <div className="fixed right-4 top-4 z-40">
+          <WhatsAppCommunityButton compact className="rounded-full px-4 py-2 text-[11px] shadow-[0_14px_34px_rgba(22,163,74,0.38)]" />
+        </div>
+
         <div className="flex items-center gap-1 mt-4">
           <img
             src="/chitpoo_logo.png"
@@ -86,6 +91,7 @@ const Welcome = () => {
               <span className="text-xl font-bold text-foreground">Fah <span className="text-primary">Ride</span></span>
             </div>
             <div className="flex items-center gap-4">
+              <WhatsAppCommunityButton compact className="rounded-lg px-4 py-2 text-xs" />
               <button
                 onClick={() => navigate("/login")}
                 className="px-5 py-2 rounded-lg text-sm font-semibold text-foreground hover:bg-secondary transition-colors"

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import HomeLiveMap from "@/components/HomeLiveMap";
 import RideCard from "@/components/RideCard";
+import WhatsAppCommunityButton from "@/components/WhatsAppCommunityButton";
 import { useRideContext } from "@/context/RideContext";
 import { reverseGeocode, geocodeLocationName, haversineDistanceKm } from "@/lib/location";
 import { toast } from "sonner";
@@ -205,6 +206,10 @@ const Home = () => {
 
   return (
     <div className="app-container bg-background min-h-screen pb-24 md:max-w-none md:mx-0 md:h-screen md:overflow-hidden md:px-8 md:pt-24 md:pb-6 lg:px-10">
+      <div className="fixed right-4 top-4 z-40 md:hidden">
+        <WhatsAppCommunityButton compact className="rounded-full px-4 py-2 text-[11px] shadow-[0_14px_34px_rgba(22,163,74,0.38)]" />
+      </div>
+
       <div className="pointer-events-none absolute inset-0 hidden overflow-hidden md:block">
         <div className="absolute left-[-140px] top-[-200px] h-[460px] w-[460px] rounded-full bg-emerald-200/35 blur-3xl" />
         <div className="absolute right-[-160px] top-[-90px] h-[390px] w-[390px] rounded-full bg-teal-200/35 blur-3xl" />
@@ -220,6 +225,7 @@ const Home = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <WhatsAppCommunityButton compact className="rounded-2xl px-5 py-3 text-xs uppercase tracking-[0.08em]" />
             <button
               type="button"
               onClick={() => navigate("/search")}

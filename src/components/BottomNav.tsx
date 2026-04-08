@@ -88,6 +88,7 @@ const BottomNav = () => {
                 </button>
               );
             })}
+
           </div>
         </div>
       </div>
