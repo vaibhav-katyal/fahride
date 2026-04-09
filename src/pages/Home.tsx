@@ -7,6 +7,7 @@ import RideCard from "@/components/RideCard";
 import WhatsAppCommunityButton from "@/components/WhatsAppCommunityButton";
 import { useRideContext } from "@/context/RideContext";
 import { reverseGeocode, geocodeLocationName, haversineDistanceKm } from "@/lib/location";
+import { getRideAvailabilityState } from "@/lib/rideStatus";
 import { toast } from "sonner";
 
 type Coordinate = [number, number];
@@ -24,7 +25,7 @@ const Home = () => {
   const [currentLocation, setCurrentLocation] = useState<Coordinate | null>(null);
   const [locationLabel, setLocationLabel] = useState("Detecting your location...");
   const [isLocating, setIsLocating] = useState(true);
-  const [desktopSplit, setDesktopSplit] = useState(66);
+  const [desktopSplit, setDesktopSplit] = useState(60);
   const [isDraggingSplit, setIsDraggingSplit] = useState(false);
   const rideCoordinatesRef = useRef<Map<string, Coordinate>>(new Map());
   const [, setGeocodingTrigger] = useState(0); // Trigger re-renders when coords are cached
@@ -69,6 +70,11 @@ const Home = () => {
   }, []);
 
   const filteredRides = rides.filter((ride) => {
+    const availability = getRideAvailabilityState(ride);
+    if (!availability.canRequest) {
+      return false;
+    }
+
     const priceValue = Number.parseFloat(ride.pricePerSeat.replace(/[^\d.]/g, ""));
     const seatMatch = appliedMinSeats === 0 || ride.seats >= appliedMinSeats;
     const priceMatch = appliedMaxPricePerMile === null || priceValue <= appliedMaxPricePerMile;
@@ -148,12 +154,11 @@ const Home = () => {
   };
 
   const activeFilterCount = Number(appliedMinSeats > 0) + Number(appliedMaxPricePerMile !== null);
-  const showTwoColumnRides = desktopSplit <= 58;
 
   useEffect(() => {
     if (!isDraggingSplit) return;
 
-    const clampSplit = (value: number) => Math.min(78, Math.max(44, value));
+    const clampSplit = (value: number) => Math.min(72, Math.max(52, value));
 
     const handleMouseMove = (event: MouseEvent) => {
       if (window.innerWidth < 768) return;
@@ -185,22 +190,22 @@ const Home = () => {
   const handleDividerKeyboard = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      setDesktopSplit((prev) => Math.max(44, prev - 2));
+      setDesktopSplit((prev) => Math.max(52, prev - 2));
     }
 
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      setDesktopSplit((prev) => Math.min(78, prev + 2));
+      setDesktopSplit((prev) => Math.min(72, prev + 2));
     }
 
     if (event.key === "Home") {
       event.preventDefault();
-      setDesktopSplit(44);
+      setDesktopSplit(52);
     }
 
     if (event.key === "End") {
       event.preventDefault();
-      setDesktopSplit(78);
+      setDesktopSplit(72);
     }
   };
 
@@ -248,7 +253,7 @@ const Home = () => {
           style={{ ["--desktop-split" as string]: `${desktopSplit}%` }}
         >
           {/* Live map view */}
-          <section className="w-full md:flex md:min-h-0 md:w-[var(--desktop-split)] md:flex-col md:gap-4">
+          <section className="w-full md:flex md:h-full md:min-h-0 md:w-[var(--desktop-split)] md:flex-col md:gap-4">
             <div className="relative h-64 overflow-hidden bg-secondary md:h-[52vh] md:min-h-[380px] md:rounded-[28px] md:border md:border-border/70 md:shadow-[0_30px_80px_rgba(15,23,42,0.14)]">
               <HomeLiveMap 
                 currentLocation={currentLocation} 
@@ -310,17 +315,20 @@ const Home = () => {
             role="separator"
             aria-label="Resize map and ride panels"
             aria-orientation="vertical"
-            aria-valuemin={44}
-            aria-valuemax={78}
+            aria-valuemin={52}
+            aria-valuemax={72}
             aria-valuenow={Math.round(desktopSplit)}
           >
             <span className={`h-14 w-1 rounded-full bg-slate-400 ${isDraggingSplit ? "bg-slate-700" : ""}`} />
           </button>
 
           {/* Nearby Rides */}
-          <section className="w-full px-4 pt-6 md:flex md:min-h-0 md:w-[calc(100%-var(--desktop-split))] md:flex-col md:rounded-[28px] md:border md:border-border/70 md:bg-card/75 md:px-4 md:pt-4 md:pb-4 md:shadow-[0_24px_54px_rgba(15,23,42,0.09)] md:backdrop-blur-xl">
-            <div className="mb-4 flex items-center justify-between md:mb-4 md:border-b md:border-border/70 md:pb-3">
-              <h2 className="text-lg font-bold text-foreground md:text-xl">Nearby Rides</h2>
+          <section className="w-full px-4 pt-6 md:flex md:h-full md:min-h-0 md:w-[calc(100%-var(--desktop-split))] md:flex-col md:overflow-hidden md:rounded-[28px] md:border md:border-border md:bg-background md:px-5 md:pt-5 md:pb-4 md:shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+            <div className="mb-4 flex items-center justify-between md:sticky md:top-0 md:z-[2] md:-mx-1 md:mb-4 md:border-b md:border-border/80 md:bg-background md:px-1 md:pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-foreground md:text-xl">Nearby Rides</h2>
+                <p className="mt-1 text-[11px] text-muted-foreground">Only live available rides with full route, time and fare details</p>
+              </div>
               <button
                 type="button"
                 onClick={handleFilterClick}
@@ -336,16 +344,12 @@ const Home = () => {
               </button>
             </div>
 
-            <div
-              className={`md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1 ${
-                showTwoColumnRides ? "flex flex-col gap-4 md:grid md:grid-cols-2" : "flex flex-col gap-4"
-              }`}
-            >
+            <div className="flex flex-col gap-4 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-3 md:pb-4 md:[scrollbar-width:thin] md:[scrollbar-color:rgba(100,116,139,0.75)_transparent] md:[&::-webkit-scrollbar]:w-2 md:[&::-webkit-scrollbar-track]:bg-transparent md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-slate-300 md:[&::-webkit-scrollbar-thumb:hover]:bg-slate-400">
               {/* Show skeleton loaders while location is syncing */}
               {isLocating ? (
                 <>
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="animate-pulse rounded-xl border border-border bg-card p-4 space-y-3">
+                    <div key={i} className="animate-pulse rounded-2xl border border-border bg-card p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3 flex-1">
                           <div className="w-10 h-10 rounded-full bg-muted" />
@@ -374,6 +378,7 @@ const Home = () => {
                     const request = requests.find(
                       (r) => r.rideId === ride.id && r.requesterEmail === currentUser.email
                     );
+
                     return (
                       <RideCard
                         key={ride.id}
@@ -393,8 +398,8 @@ const Home = () => {
                   })}
 
                   {filteredRides.length === 0 && (
-                    <p className="py-6 text-center text-sm text-muted-foreground md:rounded-xl md:border md:border-dashed md:border-border md:bg-card/60 md:col-span-2">
-                      No rides match current filters.
+                    <p className="py-6 text-center text-sm text-muted-foreground md:rounded-xl md:border md:border-dashed md:border-border md:bg-card/60">
+                      No available nearby rides right now. Try changing filters or check again in a bit.
                     </p>
                   )}
                 </>

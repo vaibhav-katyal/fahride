@@ -1,4 +1,4 @@
-import { MapPin, Phone, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Phone, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import type { RideRequest } from "@/context/RideContext";
@@ -97,10 +97,10 @@ const RideCard = ({
   const buttonState = getButtonState();
 
   const buttonClasses = {
-    primary: "bg-primary text-primary-foreground hover:bg-primary/90",
-    pending: "bg-yellow-600/20 text-yellow-700 dark:text-yellow-400 cursor-not-allowed opacity-75",
-    success: "bg-primary text-primary-foreground cursor-not-allowed opacity-75",
-    danger: "bg-rose-500/15 text-rose-700 dark:text-rose-300 cursor-not-allowed opacity-90",
+    primary: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
+    pending: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 cursor-not-allowed",
+    success: "bg-primary/85 text-primary-foreground cursor-not-allowed",
+    danger: "bg-rose-500/15 text-rose-700 dark:text-rose-300 cursor-not-allowed",
   };
 
   const showExpiredOverlay = availability.kind === "expired";
@@ -118,12 +118,14 @@ const RideCard = ({
   return (
     <div
       onClick={() => navigate(`/ride/${ride.id}`)}
-      className={`relative overflow-hidden bg-card rounded-2xl p-4 shadow-sm border border-border cursor-pointer hover:shadow-md transition-all ${
+      className={`group relative shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 cursor-pointer hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_12px_28px_rgba(15,23,42,0.11)] ${
         isOwnRide
           ? "grayscale opacity-60 hover:opacity-75"
           : ""
       }`}
     >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-emerald-100/70 to-transparent" />
+
       {showExpiredOverlay && (
         <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-br from-slate-100/45 via-slate-100/32 to-slate-50/18 backdrop-blur-[1.5px] dark:from-slate-950/28 dark:via-slate-950/18 dark:to-slate-900/10">
           <div className="absolute right-4 top-4">
@@ -147,19 +149,19 @@ const RideCard = ({
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-3">
-        <div className="relative z-[1] flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-bold text-sm">
+      <div className="relative z-[1] mb-4 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-sm font-bold text-slate-800">
             {ride.avatar}
           </div>
-          <div>
-            <p className="font-semibold text-sm text-foreground">{ride.driverName}</p>
-            <p className="text-[11px] text-muted-foreground">
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-semibold leading-tight text-slate-900">{ride.driverName}</p>
+            <p className="mt-0.5 truncate text-[12px] text-slate-500">
               {ride.carModel} {ride.carNumberPlate ? `• ${ride.carNumberPlate}` : ""}
             </p>
           </div>
         </div>
-        <div className="relative z-[1] flex flex-col items-end gap-2">
+        <div className="flex shrink-0 flex-col items-end gap-2">
           <div className="flex items-center gap-2">
             {onRequest && (
               <button
@@ -170,7 +172,7 @@ const RideCard = ({
                   }
                 }}
                 disabled={buttonState.disabled}
-                className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 ${buttonClasses[buttonState.variant as keyof typeof buttonClasses]}`}
+                className={`inline-flex h-10 items-center gap-1.5 rounded-xl px-4 text-xs font-semibold transition-colors ${buttonClasses[buttonState.variant as keyof typeof buttonClasses]}`}
               >
                 {buttonState.icon}
                 {buttonState.label}
@@ -182,12 +184,12 @@ const RideCard = ({
                 e.stopPropagation();
                 toast.info(`Contact ${ride.driverName} from ride details after approval.`);
               }}
-              className="bg-primary text-primary-foreground w-8 h-8 rounded-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/10 bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
             >
-              <Phone className="w-3.5 h-3.5" />
+              <Phone className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="text-[10px] font-semibold text-muted-foreground px-2 py-1 rounded-full bg-secondary/60">
+          <div className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
             {formatRideDate(ride.date)}
           </div>
         </div>
@@ -202,36 +204,38 @@ const RideCard = ({
         </div>
       )}
 
-      <div className="relative z-[1] flex items-start gap-3 mb-3">
-        <div className="flex flex-col items-center mt-1">
-          <div className="w-2 h-2 rounded-full bg-foreground" />
-          <div className="w-px h-6 bg-border" />
-          <div className="w-2 h-2 rounded-full border-2 border-foreground" />
-        </div>
-        <div className="flex-1 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-foreground">{ride.from}</p>
-            <span className="text-[11px] text-muted-foreground">{ride.departureTime}</span>
+      <div className="relative z-[1] mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
+        <div className="flex items-start gap-3">
+          <div className="mt-1 flex flex-col items-center">
+            <div className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+            <div className="h-7 w-px bg-slate-300" />
+            <div className="h-2.5 w-2.5 rounded-full border-2 border-slate-900" />
           </div>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-foreground">{ride.to}</p>
-            <span className="text-[11px] text-muted-foreground">{ride.arrivalTime}</span>
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="line-clamp-1 text-base font-medium text-slate-900">{ride.from}</p>
+              <span className="rounded-md bg-slate-200 px-2 py-0.5 text-[12px] font-medium text-slate-700">{ride.departureTime}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <p className="line-clamp-1 text-base font-medium text-slate-900">{ride.to}</p>
+              <span className="rounded-md bg-slate-200 px-2 py-0.5 text-[12px] font-medium text-slate-700">{ride.arrivalTime}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="relative z-[1] flex items-center justify-between pt-3 border-t border-border">
-        <div>
-          <span className="font-bold text-foreground">{ride.pricePerSeat}</span>
-          <span className="text-[11px] text-muted-foreground ml-1">per seat</span>
+      <div className="relative z-[1] grid grid-cols-3 gap-2 border-t border-slate-200 pt-3">
+        <div className="rounded-xl bg-slate-100 px-2.5 py-2 text-center">
+          <p className="text-sm font-bold text-slate-900">{ride.pricePerSeat}</p>
+          <p className="mt-0.5 text-[11px] text-slate-600">per seat</p>
         </div>
-        <div>
-          <span className="font-bold text-foreground">{ride.seats}</span>
-          <span className="text-[11px] text-muted-foreground ml-1">Seats</span>
+        <div className="rounded-xl bg-slate-100 px-2.5 py-2 text-center">
+          <p className="text-sm font-bold text-slate-900">{ride.seats}</p>
+          <p className="mt-0.5 text-[11px] text-slate-600">seats</p>
         </div>
-        <div>
-          <span className="font-bold text-foreground">{ride.eta}</span>
-          <span className="text-[11px] text-muted-foreground ml-1">Arrival</span>
+        <div className="rounded-xl bg-slate-100 px-2.5 py-2 text-center">
+          <p className="text-sm font-bold text-slate-900">{ride.eta}</p>
+          <p className="mt-0.5 text-[11px] text-slate-600">arrival</p>
         </div>
       </div>
     </div>
