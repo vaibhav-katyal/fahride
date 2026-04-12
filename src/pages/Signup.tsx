@@ -146,7 +146,12 @@ const Signup = () => {
         trackEvent("sign_up", {
           method: "otp",
         });
-        navigate("/home");
+        navigate("/home", { 
+          state: { 
+            signupReward: true, 
+            referralReward: !!referralCode 
+          } 
+        });
       })
       .catch((apiError: unknown) => {
         setError(apiError instanceof Error ? apiError.message : "Failed to verify OTP");

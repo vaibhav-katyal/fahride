@@ -6,10 +6,13 @@ import BottomNav from "@/components/BottomNav";
 import { useRideContext } from "@/context/RideContext";
 import { trackPageView } from "@/lib/analytics";
 import { toast } from "sonner";
+import { useCoinReward } from "@/context/CoinRewardContext";
+import { apiRequest } from "@/lib/api";
 
 const Notifications = () => {
   const navigate = useNavigate();
   const { notifications, requests, markNotificationRead, approveRequest, rejectRequest, deleteAllNotifications, refreshData } = useRideContext();
+  const { showCoinReward } = useCoinReward();
   const [actioningNotificationId, setActioningNotificationId] = useState<string | null>(null);
   const [resolvedActions, setResolvedActions] = useState<Record<string, "approved" | "rejected">>({});
   const [isClearing, setIsClearing] = useState(false);
@@ -205,6 +208,17 @@ const Notifications = () => {
                               event.stopPropagation();
                               if (!requestId) return;
                               setActioningNotificationId(item.id);
+                              
+                              let isEligible = false;
+                              try {
+                                const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number; daily: { postRewardsUsed: number; postRewardsLimit: number } } }>("/wallet/me");
+                                const hasDailyQuota = walletRes.data.daily.postRewardsUsed < walletRes.data.daily.postRewardsLimit;
+                                const hasWeeklyQuota = walletRes.data.weeklyEarned + 20 <= walletRes.data.weeklyCap;
+                                isEligible = hasDailyQuota && hasWeeklyQuota;
+                              } catch {
+                                // Ignore
+                              }
+                              
                               try {
                                 const result = await approveRequest(requestId);
                                 if (!result.success) {
@@ -215,6 +229,10 @@ const Notifications = () => {
                                 await markNotificationRead(item.id);
                                 setResolvedActions((prev) => ({ ...prev, [item.id]: "approved" }));
                                 toast.success("Request approved");
+                                
+                                if (isEligible) {
+                                  showCoinReward({ coins: 20, reason: "You earned Fah Coins for accepting a rider!" });
+                                }
                               } finally {
                                 setActioningNotificationId(null);
                               }

@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, type KeyboardEvent } from "react";
 import { Search, MapPin, SlidersHorizontal, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import HomeLiveMap from "@/components/HomeLiveMap";
 import RideCard from "@/components/RideCard";
 import WhatsAppCommunityButton from "@/components/WhatsAppCommunityButton";
 import { useRideContext } from "@/context/RideContext";
+import { useCoinReward } from "@/context/CoinRewardContext";
 import { reverseGeocode, geocodeLocationName, haversineDistanceKm } from "@/lib/location";
 import { getRideAvailabilityState } from "@/lib/rideStatus";
 import { trackEvent } from "@/lib/analytics";
@@ -15,12 +16,39 @@ type Coordinate = [number, number];
 
 const Home = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { showCoinReward } = useCoinReward();
   const { rides, sendRequest, requests, currentUser } = useRideContext();
   const [showFilters, setShowFilters] = useState(false);
   const [appliedMinSeats, setAppliedMinSeats] = useState(0);
   const [appliedMaxPricePerMile, setAppliedMaxPricePerMile] = useState<number | null>(null);
   const [draftMinSeats, setDraftMinSeats] = useState(0);
   const [draftMaxPricePerMile, setDraftMaxPricePerMile] = useState<number | null>(null);
+
+  // Check for signup rewards
+  useEffect(() => {
+    const state = location.state as { signupReward?: boolean; referralReward?: boolean } | null;
+    if (state?.signupReward) {
+      // Clear the state so it doesn't trigger again on refresh
+      window.history.replaceState({}, document.title);
+      
+      showCoinReward({
+        coins: 5,
+        reason: "Welcome to FahRide! You earned coins for signing up.",
+        onComplete: () => {
+          if (state.referralReward) {
+            // Add a small delay for better visual separation between popups
+            setTimeout(() => {
+              showCoinReward({
+                coins: 10,
+                reason: "You earned extra coins for using a friend's referral code!",
+              });
+            }, 300);
+          }
+        }
+      });
+    }
+  }, [location.state, showCoinReward]);
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const [seatsToRequest, setSeatsToRequest] = useState(1);
   const [currentLocation, setCurrentLocation] = useState<Coordinate | null>(null);

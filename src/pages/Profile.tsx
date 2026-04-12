@@ -646,7 +646,7 @@ setCurrentUserFromAccount({
                   {walletData.transactions.length === 0 ? (
                     <p className="mt-2 text-sm text-muted-foreground">No transactions yet.</p>
                   ) : (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-3 space-y-2 max-h-[240px] overflow-y-auto pr-1">
                       {walletData.transactions.slice(0, 8).map((txn) => (
                         <div key={txn.id} className="flex items-start justify-between rounded-lg border border-border/70 bg-card px-3 py-2">
                           <div className="pr-3">

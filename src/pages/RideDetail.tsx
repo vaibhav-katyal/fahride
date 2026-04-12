@@ -241,8 +241,11 @@ const RideDetail = () => {
         `Requested ${seatsToRequest} ${seatsToRequest === 1 ? "seat" : "seats"} from ${ride.driverName}!`
       );
       try {
-        const walletRes = await apiRequest<{ data: { daily: { joinRewardsUsed: number; joinRewardsLimit: number } } }>("/wallet/overview");
-        if (walletRes.data.daily.joinRewardsUsed < walletRes.data.daily.joinRewardsLimit) {
+        const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number; daily: { joinRewardsUsed: number; joinRewardsLimit: number } } }>("/wallet/me");
+        const hasDailyQuota = walletRes.data.daily.joinRewardsUsed < walletRes.data.daily.joinRewardsLimit;
+        const hasWeeklyQuota = walletRes.data.weeklyEarned + 10 <= walletRes.data.weeklyCap;
+
+        if (hasDailyQuota && hasWeeklyQuota) {
           showCoinReward({
             coins: 10,
             reason: "Coins will be credited when the driver approves your request",
@@ -408,6 +411,17 @@ const RideDetail = () => {
     }
 
     setIsSubmittingFeedback(true);
+    let isEligible = false;
+
+    if (feedbackKind === "review") {
+      try {
+        const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number } }>("/wallet/me");
+        isEligible = walletRes.data.weeklyEarned + rewardCoinCount <= walletRes.data.weeklyCap;
+      } catch {
+        // Ignore errors
+      }
+    }
+
     try {
       const response = await apiRequest<{ success: boolean; message: string }>(`/feedback/${ride.id}/feedback`, {
         method: "POST",
@@ -418,7 +432,16 @@ const RideDetail = () => {
         }),
       });
 
-      showCoinReward({ coins: rewardCoinCount, reason: "Feedback submitted — thank you!" });
+      if (feedbackKind === "review") {
+        if (isEligible) {
+          showCoinReward({ coins: rewardCoinCount, reason: "Feedback submitted — thank you!" });
+        } else {
+          toast.success("Feedback submitted — thank you!");
+        }
+      } else {
+        toast.success("Report submitted successfully.");
+      }
+      
       setFeedbackComment("");
       setFeedbackRating(5);
     } catch (error) {
@@ -449,19 +472,26 @@ const RideDetail = () => {
 
   const handleApproveRequest = async (requestId: string) => {
     setProcessingRequestId(requestId);
+    
+    // Check wallet limit BEFORE making the approval call, because points are awarded instantly.
+    let isEligible = false;
+    try {
+      const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number; daily: { postRewardsUsed: number; postRewardsLimit: number } } }>("/wallet/me");
+      const hasDailyQuota = walletRes.data.daily.postRewardsUsed < walletRes.data.daily.postRewardsLimit;
+      const hasWeeklyQuota = walletRes.data.weeklyEarned + 20 <= walletRes.data.weeklyCap;
+      isEligible = hasDailyQuota && hasWeeklyQuota;
+    } catch {
+      // Ignore
+    }
+
     try {
       const result = await approveRequest(requestId);
       if (!result.success) {
         toast.error(result.message);
       } else {
         toast.success("Request approved!");
-        try {
-          const walletRes = await apiRequest<{ data: { daily: { postRewardsUsed: number; postRewardsLimit: number } } }>("/wallet/overview");
-          if (walletRes.data.daily.postRewardsUsed < walletRes.data.daily.postRewardsLimit) {
-            showCoinReward({ coins: 20, reason: "You earned Fah Coins for accepting a rider!" });
-          }
-        } catch {
-          // Ignore
+        if (isEligible) {
+          showCoinReward({ coins: 20, reason: "You earned Fah Coins for accepting a rider!" });
         }
       }
     } finally {

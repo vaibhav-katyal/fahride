@@ -221,8 +221,12 @@ const PostRide = () => {
     });
     
     try {
-      const walletRes = await apiRequest<{ data: { daily: { postRewardsUsed: number; postRewardsLimit: number } } }>("/wallet/overview");
-      if (walletRes.data.daily.postRewardsUsed >= walletRes.data.daily.postRewardsLimit) {
+      const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number; daily: { postRewardsUsed: number; postRewardsLimit: number } } }>("/wallet/me");
+      
+      const willExceedDaily = walletRes.data.daily.postRewardsUsed >= walletRes.data.daily.postRewardsLimit;
+      const willExceedWeekly = walletRes.data.weeklyEarned + 20 > walletRes.data.weeklyCap;
+
+      if (willExceedDaily || willExceedWeekly) {
         toast.success("Ride posted successfully");
         navigate("/home");
       } else {
