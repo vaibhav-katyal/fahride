@@ -10,6 +10,7 @@ import {
 import { apiRequest } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { toast } from "sonner";
+import FahCoinAdPopup from "@/components/FahCoinAdPopup";
 
 const branches = ["CSE", "Mech Engg", "ECE", "Civil", "MBA", "Pharmacy", "Biotech", "BCA", "BBA"];
 const years = ["1st Year", "2nd Year", "3rd Year", "4th Year", "MBA/PhD"];
@@ -30,6 +31,7 @@ const Signup = () => {
   const [error, setError] = useState("");
   const [resendAfterTime, setResendAfterTime] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [showAdPopup, setShowAdPopup] = useState(true);
 
   useEffect(() => {
     const referralFromLink =
@@ -161,6 +163,7 @@ const Signup = () => {
 
   return (
     <div className="app-container desktop-premium-page flex flex-col bg-background min-h-screen px-6 py-10 md:items-center md:justify-center">
+      {showAdPopup && <FahCoinAdPopup onClose={() => setShowAdPopup(false)} />}
       <div className="pointer-events-none absolute inset-0 hidden overflow-hidden md:block">
         <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-emerald-200/35 blur-3xl" />
         <div className="absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-lime-200/30 blur-3xl" />

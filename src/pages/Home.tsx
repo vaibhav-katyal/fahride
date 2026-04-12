@@ -11,6 +11,7 @@ import { reverseGeocode, geocodeLocationName, haversineDistanceKm } from "@/lib/
 import { getRideAvailabilityState } from "@/lib/rideStatus";
 import { trackEvent } from "@/lib/analytics";
 import { toast } from "sonner";
+import FahCoinBanner from "@/components/FahCoinBanner";
 
 type Coordinate = [number, number];
 
@@ -354,6 +355,9 @@ const Home = () => {
 
           {/* Nearby Rides */}
           <section className="w-full px-4 pt-6 md:flex md:h-full md:min-h-0 md:w-[calc(100%-var(--desktop-split))] md:flex-col md:overflow-hidden md:rounded-[28px] md:border md:border-border md:bg-background md:px-5 md:pt-5 md:pb-4 md:shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+            {/* Mobile-only coin banner */}
+            <FahCoinBanner dismissibleId="home_mobile_banner" className="mb-6 md:hidden" />
+            
             <div className="mb-4 flex items-center justify-between md:sticky md:top-0 md:z-[2] md:-mx-1 md:mb-4 md:border-b md:border-border/80 md:bg-background md:px-1 md:pb-3">
               <div>
                 <h2 className="text-lg font-bold text-foreground md:text-xl">Nearby Rides</h2>

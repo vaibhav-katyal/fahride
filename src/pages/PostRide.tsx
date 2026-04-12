@@ -519,6 +519,15 @@ const PostRide = () => {
             </div>
           </div>
 
+          <div>
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-2 flex items-center justify-between">
+              <p className="text-[11px] text-primary font-medium flex items-center gap-1.5">
+                ✨ Earn <span className="font-bold">20 Fah Coins</span> for hosting this ride!
+              </p>
+              <span className="text-[10px] bg-primary/10 px-2 py-0.5 rounded-full text-primary font-bold">~₹2.00</span>
+            </div>
+          </div>
+
           {/* Submit */}
           <button
             type="submit"
