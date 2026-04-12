@@ -67,9 +67,9 @@ const FahCoinBanner: React.FC<FahCoinBannerProps> = ({ dismissibleId, className 
 
         <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
           <div className="flex items-center gap-1.5">
-            <Banknote className="w-4 h-4 text-[#4ade80]" />
+            {/* <Banknote className="w-4 h-4 text-[#4ade80]" /> */}
             <span className="text-xs sm:text-sm font-bold text-white tracking-wide">
-              500 Coins = ₹50 to Bank
+              
             </span>
           </div>
           <div className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-[#d4af37] group-hover:translate-x-1 transition-transform">
