@@ -11,6 +11,7 @@ const otpChallengeSchema = new Schema(
       passwordHash: { type: String },
       branch: { type: String },
       year: { type: String },
+      referralCode: { type: String },
     },
     attempts: { type: Number, default: 0 },
     expiresAt: { type: Date, required: true },

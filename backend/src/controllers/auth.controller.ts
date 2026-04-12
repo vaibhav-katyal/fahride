@@ -9,6 +9,12 @@ import { AppError } from "../utils/appError.js";
 import { generateOtp, hashOtp, verifyOtpHash } from "../utils/otp.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { sendOtpEmail } from "../services/mailer.service.js";
+import {
+  awardReferralInviteBonus,
+  awardReferralSignupFriendBonus,
+  awardSignupPoints,
+  generateUniqueReferralCode,
+} from "../services/wallet.service.js";
 import { requestLoginOtpSchema, requestSignupOtpSchema, verifyOtpSchema, requestPasswordResetOtpSchema, resetPasswordSchema } from "../validators/auth.validator.js";
 import { updateProfileSchema } from "../validators/ride.validator.js";
 import type { AuthenticatedRequest } from "../middlewares/auth.middleware.js";
@@ -42,7 +48,7 @@ const accessCookieExpires = () => {
   return new Date(Date.now() + minutes * 60 * 1000);
 };
 
-const sendAuthResponse = (res: Response, user: { _id: unknown; name: string; email: string; phone: string; branch: string; year: string; role: "user" | "admin"; profileImageUrl?: string }) => {
+const sendAuthResponse = (res: Response, user: { _id: unknown; name: string; email: string; phone: string; branch: string; year: string; role: "user" | "admin"; profileImageUrl?: string; walletPoints?: number; referralCode?: string | null }) => {
   const tokens = authTokens(String(user._id), user.email, user.role);
   res.cookie("accessToken", tokens.accessToken, {
     ...accessCookieOptions,
@@ -63,6 +69,8 @@ const sendAuthResponse = (res: Response, user: { _id: unknown; name: string; ema
       year: user.year,
       role: user.role,
       profileImageUrl: user.profileImageUrl || "",
+      walletPoints: user.walletPoints ?? 0,
+      referralCode: user.referralCode || "",
     },
     accessToken: tokens.accessToken,
   };
@@ -71,6 +79,13 @@ const sendAuthResponse = (res: Response, user: { _id: unknown; name: string; ema
 export const requestSignupOtp = asyncHandler(async (req: Request, res: Response) => {
   const parsed = requestSignupOtpSchema.parse(req.body);
   const email = parsed.email.toLowerCase();
+
+  if (parsed.referralCode) {
+    const inviterExists = await UserModel.exists({ referralCode: parsed.referralCode });
+    if (!inviterExists) {
+      throw new AppError("Invalid referral code", 400);
+    }
+  }
 
   const existingUser = await UserModel.findOne({ email });
   if (existingUser) {
@@ -102,6 +117,7 @@ export const requestSignupOtp = asyncHandler(async (req: Request, res: Response)
       passwordHash,
       branch: parsed.branch,
       year: parsed.year,
+      referralCode: parsed.referralCode,
     },
     attempts: 0,
     expiresAt,
@@ -155,6 +171,17 @@ export const verifySignupOtp = asyncHandler(async (req: Request, res: Response) 
     throw new AppError("Account already exists", 409);
   }
 
+  let referredByUserId: string | undefined;
+  if (draft.referralCode) {
+    const inviter = await UserModel.findOne({ referralCode: draft.referralCode }).select("_id").lean();
+    if (!inviter) {
+      throw new AppError("Invalid referral code", 400);
+    }
+    referredByUserId = String(inviter._id);
+  }
+
+  const referralCode = await generateUniqueReferralCode();
+
   const createdUser = await UserModel.create({
     name: draft.name,
     email,
@@ -164,12 +191,25 @@ export const verifySignupOtp = asyncHandler(async (req: Request, res: Response) 
     year: draft.year,
     role: isAdminEmail(email) ? "admin" : "user",
     isVerified: true,
+    referralCode,
+    referredBy: referredByUserId,
   });
+
+  await awardSignupPoints(String(createdUser._id));
+  if (referredByUserId) {
+    await awardReferralInviteBonus(referredByUserId, String(createdUser._id));
+    await awardReferralSignupFriendBonus(String(createdUser._id), referredByUserId);
+  }
+
+  const freshUser = await UserModel.findById(createdUser._id);
+  if (!freshUser) {
+    throw new AppError("Account not found", 404);
+  }
 
   challenge.consumedAt = new Date();
   await challenge.save();
 
-  const authPayload = sendAuthResponse(res, createdUser);
+  const authPayload = sendAuthResponse(res, freshUser);
 
   res.status(201).json({
     success: true,
@@ -326,6 +366,8 @@ export const me = asyncHandler(async (req: AuthenticatedRequest, res: Response) 
         year: user.year,
         role: user.role,
         profileImageUrl: user.profileImageUrl || "",
+        walletPoints: user.walletPoints ?? 0,
+        referralCode: user.referralCode || "",
       },
     },
   });
@@ -369,6 +411,8 @@ export const updateProfile = asyncHandler(async (req: AuthenticatedRequest, res:
         year: user.year,
         role: user.role,
         profileImageUrl: user.profileImageUrl || "",
+        walletPoints: user.walletPoints ?? 0,
+        referralCode: user.referralCode || "",
       },
     },
   });

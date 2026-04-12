@@ -4,12 +4,14 @@ import carpoolImg from "@/assets/carpool-illustration.png";
 import { AUTH_CHANGED_EVENT, getCurrentUser } from "@/lib/auth";
 import { Users, MapPin, Zap, Leaf, ArrowRight, CheckCircle } from "lucide-react";
 import WhatsAppCommunityButton from "@/components/WhatsAppCommunityButton";
+import { trackPageView } from "@/lib/analytics";
 
 const Welcome = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getCurrentUser()?.id));
 
   useEffect(() => {
+    trackPageView("/welcome");
     const syncAuth = () => {
       setIsAuthenticated(Boolean(getCurrentUser()?.id));
     };

@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { hasAnalyticsConsent, loadGoogleAnalytics, trackPageView } from "@/lib/analytics";
+import {
+  hasAnalyticsConsent,
+  loadGoogleAnalytics,
+  trackEngagementPulse,
+  trackPageView,
+  trackSessionStart,
+} from "@/lib/analytics";
 
 const CONSENT_EVENT = "cookie-consent-changed";
 
@@ -14,8 +20,23 @@ const AnalyticsTracker = () => {
     }
 
     loadGoogleAnalytics();
+    trackSessionStart();
     trackPageView(`${location.pathname}${location.search}`);
   }, [isEnabled, location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!isEnabled) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      trackEngagementPulse();
+    }, 45000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isEnabled]);
 
   useEffect(() => {
     const handleConsentChange = () => {
@@ -24,6 +45,7 @@ const AnalyticsTracker = () => {
 
       if (consentGranted) {
         loadGoogleAnalytics();
+        trackSessionStart();
         trackPageView(`${location.pathname}${location.search}`);
       }
     };

@@ -5,9 +5,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AnalyticsTracker from "@/components/AnalyticsTracker";
+import AnalyticsHealthBadge from "@/components/AnalyticsHealthBadge";
 import { RideProvider } from "@/context/RideContext";
 import { SocketProvider } from "@/context/SocketContext";
 import { MaintenanceProvider, useMaintenance } from "@/context/MaintenanceContext";
+import { CoinRewardProvider } from "@/context/CoinRewardContext";
 import CookieConsent from "@/components/CookieConsent";
 import { AUTH_CHANGED_EVENT, getCurrentUser, hydrateCurrentUser } from "@/lib/auth";
 import { toast } from "sonner";
@@ -305,9 +307,12 @@ const App = () => (
       <BrowserRouter>
         <MaintenanceProvider>
           <AnalyticsTracker />
+          <AnalyticsHealthBadge />
           <SocketProvider>
             <RideProvider>
-              <AppRoutes />
+              <CoinRewardProvider>
+                <AppRoutes />
+              </CoinRewardProvider>
             </RideProvider>
           </SocketProvider>
           <CookieConsent />

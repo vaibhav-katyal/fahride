@@ -7,6 +7,7 @@ import {
   setCurrentUserFromAccount,
 } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 import { toast } from "sonner";
 
 const Login = () => {
@@ -96,6 +97,9 @@ const Login = () => {
     )
       .then((response) => {
         setCurrentUserFromAccount(response.data.user, response.data.accessToken);
+        trackEvent("login", {
+          method: "otp",
+        });
         navigate("/home");
       })
       .catch((apiError: unknown) => {

@@ -10,6 +10,7 @@ import {
   normalizeLocationText,
   type PlaceSuggestion,
 } from "@/lib/location";
+import { trackEvent } from "@/lib/analytics";
 import { toast } from "sonner";
 
 const SearchRide = () => {
@@ -139,6 +140,7 @@ const SearchRide = () => {
   });
 
   const handleFilterClick = () => {
+    trackEvent("open_filters", { page: "search" });
     setDraftMinSeats(appliedMinSeats);
     setDraftMaxPricePerMile(appliedMaxPricePerMile);
     setDraftBranch(appliedBranch);
@@ -149,6 +151,12 @@ const SearchRide = () => {
   };
 
   const handleApplyFilters = () => {
+    trackEvent("apply_filters", {
+      min_seats: draftMinSeats,
+      max_price: draftMaxPricePerMile,
+      branch: draftBranch,
+      car_type: draftCarType,
+    });
     setAppliedMinSeats(draftMinSeats);
     setAppliedMaxPricePerMile(draftMaxPricePerMile);
     setAppliedBranch(draftBranch);
@@ -354,10 +362,23 @@ const SearchRide = () => {
                     const result = await sendRequest(selectedRideId, seatsToRequest);
                     setSelectedRideId(null);
                     if (result.success) {
+                      trackEvent("join_ride", {
+                        ride_id: selectedRideId,
+                        seats_requested: seatsToRequest,
+                        driver_name: ride?.driverName,
+                        from: ride?.from,
+                        to: ride?.to,
+                        search_from: from,
+                        search_to: to,
+                      });
                       toast.success(
                         `Requested ${seatsToRequest} ${seatsToRequest === 1 ? "seat" : "seats"} from ${ride?.driverName}!`
                       );
                     } else {
+                      trackEvent("join_ride_error", {
+                        ride_id: selectedRideId,
+                        error: result.message,
+                      });
                       toast.error(result.message);
                     }
                   }}

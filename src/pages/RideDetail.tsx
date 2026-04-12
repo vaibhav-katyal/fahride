@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock,
-  DollarSign,
   Pencil,
   Trash2,
   Loader2,
@@ -22,11 +21,15 @@ import Chat from "@/components/Chat";
 import BottomNav from "@/components/BottomNav";
 import LiveRideMap from "@/components/LiveRideMap";
 import { useRideContext } from "@/context/RideContext";
+import { useCoinReward } from "@/context/CoinRewardContext";
 import { getCurrentUser } from "@/lib/auth";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { apiRequest, ApiError } from "@/lib/api";
 import { isFeatureEnabled } from "@/lib/featureFlags";
+import { getRideAvailabilityState, formatRideDate } from "@/lib/rideStatus";
 import { toast } from "sonner";
+
+const rewardCoinCount = 1;
 
 type DriverReview = {
   id: string;
@@ -45,6 +48,7 @@ const RideDetail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { rides, requests, currentUser, sendRequest, getRequestForRide, updateRide, deleteRide, cancelBooking, approveRequest, rejectRequest } = useRideContext();
+  const { showCoinReward } = useCoinReward();
 
   const [request, setRequest] = useState<ReturnType<typeof getRequestForRide>>(undefined);
   const [showSeatSelection, setShowSeatSelection] = useState(false);
@@ -83,6 +87,7 @@ const RideDetail = () => {
 
   const ride = rides.find((r) => r.id === id);
   const isRideOwner = ride?.driverEmail === currentUser.email;
+  const availability = ride ? getRideAvailabilityState(ride) : null;
   const requestedRequestId = searchParams.get("requestId");
   const selectedRequest = requestedRequestId
     ? requests.find((r) => r.id === requestedRequestId && r.rideId === id)
@@ -103,6 +108,15 @@ const RideDetail = () => {
   const resolvedDriverPhone = ride?.driverPhone || (isRideOwner ? sessionUser?.phone || "" : "");
   const isChatEnabled = isFeatureEnabled("VITE_CHAT_ENABLED", false);
 
+  const formatRupeePrice = (value: string) => {
+    const numeric = Number.parseFloat(value.replace(/[^\d.]/g, ""));
+    if (!Number.isFinite(numeric)) {
+      return value.startsWith("₹") ? value : `₹${value.replace(/^[^\d]+/, "")}`;
+    }
+
+    return `₹${Number.isInteger(numeric) ? numeric : numeric.toFixed(2)}`;
+  };
+
   useEffect(() => {
     if (id) {
       setRequest(getRequestForRide(id));
@@ -118,7 +132,7 @@ const RideDetail = () => {
       date: ride.date || "",
       departureTime: ride.departureTime,
       arrivalTime: ride.arrivalTime || "",
-      pricePerSeat: ride.pricePerSeat.replace(/^₹/, ""),
+      pricePerSeat: ride.pricePerSeat.replace(/^[₹$]/, ""),
       seats: String(ride.seats),
       carModel: ride.carModel,
       carNumberPlate: ride.carNumberPlate || "",
@@ -127,6 +141,12 @@ const RideDetail = () => {
       carImageUrl: ride.carImageUrl || "",
     });
   }, [ride]);
+
+  useEffect(() => {
+    if (showSeatSelection && availability && !availability.canRequest) {
+      setShowSeatSelection(false);
+    }
+  }, [availability, showSeatSelection]);
 
   useEffect(() => {
     let active = true;
@@ -190,11 +210,26 @@ const RideDetail = () => {
     );
   }
 
+  const requestCtaLabel =
+    availability?.kind === "last_seat"
+      ? "Grab the last seat"
+      : availability?.kind === "full"
+        ? "Seats full"
+        : availability?.kind === "expired"
+          ? "Ride ended"
+          : "Request This Ride";
+
   const handleRequest = () => {
     if (isRideOwner) {
       toast.info("You cannot request your own ride.");
       return;
     }
+
+    if (!availability?.canRequest) {
+      toast.info(availability?.headline || "This ride is no longer available.");
+      return;
+    }
+
     setShowSeatSelection(true);
   };
 
@@ -205,6 +240,21 @@ const RideDetail = () => {
       toast.success(
         `Requested ${seatsToRequest} ${seatsToRequest === 1 ? "seat" : "seats"} from ${ride.driverName}!`
       );
+      try {
+        const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number; daily: { joinRewardsUsed: number; joinRewardsLimit: number } } }>("/wallet/me");
+        const hasDailyQuota = walletRes.data.daily.joinRewardsUsed < walletRes.data.daily.joinRewardsLimit;
+        const hasWeeklyQuota = walletRes.data.weeklyEarned + 10 <= walletRes.data.weeklyCap;
+
+        if (hasDailyQuota && hasWeeklyQuota) {
+          showCoinReward({
+            coins: 10,
+            reason: "Coins will be credited when the driver approves your request",
+            pending: true,
+          });
+        }
+      } catch {
+        // Ignore error and don't show misleading popup
+      }
     } else {
       toast.error(result.message);
     }
@@ -361,6 +411,17 @@ const RideDetail = () => {
     }
 
     setIsSubmittingFeedback(true);
+    let isEligible = false;
+
+    if (feedbackKind === "review") {
+      try {
+        const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number } }>("/wallet/me");
+        isEligible = walletRes.data.weeklyEarned + rewardCoinCount <= walletRes.data.weeklyCap;
+      } catch {
+        // Ignore errors
+      }
+    }
+
     try {
       const response = await apiRequest<{ success: boolean; message: string }>(`/feedback/${ride.id}/feedback`, {
         method: "POST",
@@ -371,7 +432,16 @@ const RideDetail = () => {
         }),
       });
 
-      toast.success(response.message);
+      if (feedbackKind === "review") {
+        if (isEligible) {
+          showCoinReward({ coins: rewardCoinCount, reason: "Feedback submitted — thank you!" });
+        } else {
+          toast.success("Feedback submitted — thank you!");
+        }
+      } else {
+        toast.success("Report submitted successfully.");
+      }
+      
       setFeedbackComment("");
       setFeedbackRating(5);
     } catch (error) {
@@ -402,12 +472,27 @@ const RideDetail = () => {
 
   const handleApproveRequest = async (requestId: string) => {
     setProcessingRequestId(requestId);
+    
+    // Check wallet limit BEFORE making the approval call, because points are awarded instantly.
+    let isEligible = false;
+    try {
+      const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number; daily: { postRewardsUsed: number; postRewardsLimit: number } } }>("/wallet/me");
+      const hasDailyQuota = walletRes.data.daily.postRewardsUsed < walletRes.data.daily.postRewardsLimit;
+      const hasWeeklyQuota = walletRes.data.weeklyEarned + 20 <= walletRes.data.weeklyCap;
+      isEligible = hasDailyQuota && hasWeeklyQuota;
+    } catch {
+      // Ignore
+    }
+
     try {
       const result = await approveRequest(requestId);
       if (!result.success) {
         toast.error(result.message);
       } else {
         toast.success("Request approved!");
+        if (isEligible) {
+          showCoinReward({ coins: 20, reason: "You earned Fah Coins for accepting a rider!" });
+        }
       }
     } finally {
       setProcessingRequestId(null);
@@ -432,18 +517,20 @@ const RideDetail = () => {
     request?.status === "approved"
       ? "text-primary"
       : request?.status === "rejected"
-      ? "text-destructive"
-      : "text-yellow-500";
+        ? "text-destructive"
+        : "text-yellow-500";
 
   const StatusIcon =
     request?.status === "approved"
       ? CheckCircle2
       : request?.status === "rejected"
-      ? XCircle
-      : Loader2;
+        ? XCircle
+        : Loader2;
 
   return (
     <div className="app-container desktop-premium-page bg-background min-h-screen pb-24 md:pb-10">
+      {/* Old celebration overlay removed — replaced by global CoinRewardPopup */}
+
       <div className="px-4 pt-6 flex items-center gap-3 mb-4 md:px-0 md:pt-0 md:max-w-[86rem] md:mx-auto">
         <button type="button" onClick={() => navigate(-1)} className="text-foreground">
           <ArrowLeft className="w-5 h-5" />
@@ -452,166 +539,170 @@ const RideDetail = () => {
       </div>
 
       <div className="mx-4 md:mx-auto md:max-w-[86rem] md:grid md:grid-cols-12 md:gap-5 md:min-h-[430px]">
-      <div className="h-56 md:col-span-7 md:h-full rounded-2xl bg-secondary border border-border overflow-hidden relative mb-4 md:mb-0 md:desktop-glass-card">
-        {canViewMap ? (
-          <>
-            <LiveRideMap
-              from={ride.from}
-              to={ride.to}
-              rideId={ride.id}
-              requestId={activeRequest?.id ?? ""}
-              isDriver={isRideOwner}
-            />
+        <div className="h-56 md:col-span-7 md:h-full rounded-2xl bg-secondary border border-border overflow-hidden relative mb-4 md:mb-0 md:desktop-glass-card">
+          {canViewMap ? (
+            <>
+              <LiveRideMap
+                from={ride.from}
+                to={ride.to}
+                rideId={ride.id}
+                requestId={activeRequest?.id ?? ""}
+                isDriver={isRideOwner}
+              />
 
-            <div className="absolute left-3 top-3 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground">
-              {ride.from} -&gt; {ride.to}
+              <div className="absolute left-3 top-3 rounded-md bg-background/90 px-2 py-1 text-[10px] font-semibold text-foreground">
+                {ride.from} -&gt; {ride.to}
+              </div>
+            </>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <MapPin className="w-8 h-8 text-primary mx-auto mb-1" />
+                <p className="text-xs text-muted-foreground">Map available after approval</p>
+              </div>
             </div>
-          </>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <MapPin className="w-8 h-8 text-primary mx-auto mb-1" />
-              <p className="text-xs text-muted-foreground">Map available after approval</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-card rounded-2xl p-4 border border-border mb-4 md:col-span-5 md:mb-0 md:h-full md:desktop-glass-card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-foreground font-bold">
-              {ride.avatar}
-            </div>
-            <div>
-              <p className="font-bold text-foreground">{ride.driverName}</p>
-              <p className="text-xs text-muted-foreground">
-                {ride.carModel} {ride.carNumberPlate ? `- ${ride.carNumberPlate}` : ""}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handlePhoneClick}
-            className="bg-primary text-primary-foreground w-10 h-10 rounded-xl flex items-center justify-center"
-          >
-            <Phone className="w-4 h-4" />
-          </button>
+          )}
         </div>
 
-        <div className="bg-secondary/50 rounded-xl p-3 mb-3 flex flex-col gap-2">
-          {ride.driverEmail && (
-            <div className="flex items-start gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Email:</span>
-              <p className="text-xs text-foreground break-all">{ride.driverEmail}</p>
-            </div>
-          )}
-          {ride.driverBranch && (
-            <div className="flex items-start gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Branch:</span>
-              <p className="text-xs text-foreground">{ride.driverBranch}</p>
-            </div>
-          )}
-          {ride.driverYear && (
-            <div className="flex items-start gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Year:</span>
-              <p className="text-xs text-foreground">{ride.driverYear}</p>
-            </div>
-          )}
-          {canSeePhone && resolvedDriverPhone ? (
-            <div className="flex items-start gap-2 pt-1 border-t border-border">
-              <span className="text-[10px] font-semibold text-primary min-w-16">Phone:</span>
-              <p className="text-xs text-primary font-semibold">{resolvedDriverPhone}</p>
-            </div>
-          ) : (
-            !isRideOwner && (
-              <div className="flex items-start gap-2 pt-1 border-t border-border">
-                <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Phone:</span>
-                <p className="text-[10px] text-muted-foreground italic">
-                  Once ride is accepted, phone number will be visible
+        <div className="bg-card rounded-2xl p-4 border border-border mb-4 md:col-span-5 md:mb-0 md:h-full md:desktop-glass-card">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-foreground font-bold">
+                {ride.avatar}
+              </div>
+              <div>
+                <p className="font-bold text-foreground">{ride.driverName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {ride.carModel} {ride.carNumberPlate ? `- ${ride.carNumberPlate}` : ""}
                 </p>
               </div>
-            )
-          )}
-        </div>
-
-        <div className="mb-3 rounded-xl border border-border bg-secondary/40 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Car image</p>
-            {ride.carImageUrl ? (
-              <span className="text-[10px] font-medium text-primary">Uploaded</span>
-            ) : (
-              <span className="text-[10px] font-medium text-muted-foreground">No car image</span>
-            )}
-          </div>
-          {ride.carImageUrl ? (
-            <div className="relative">
-              <img
-                src={ride.carImageUrl}
-                alt={`${ride.carModel} car preview`}
-                className="w-full h-36 object-cover rounded-lg border border-border"
-              />
+            </div>
+            <div className="flex flex-col items-end gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setFullImageUrl(ride.carImageUrl);
-                  setShowFullImage(true);
-                }}
-                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-lg transition-colors"
-                title="View full image"
+                onClick={handlePhoneClick}
+                className="bg-primary text-primary-foreground w-10 h-10 rounded-xl flex items-center justify-center"
               >
-                <Maximize2 className="w-4 h-4" />
+                <Phone className="w-4 h-4" />
               </button>
+              <div className="text-[10px] font-semibold text-muted-foreground px-2 py-1 rounded-full bg-secondary/60">
+                {formatRideDate(ride.date)}
+              </div>
             </div>
-          ) : (
-            <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border bg-background/60">
-              <p className="text-xs text-muted-foreground">Car image will appear here when uploaded.</p>
-            </div>
-          )}
-        </div>
+          </div>
 
-        <div className="flex items-start gap-3 mb-4">
-          <div className="flex flex-col items-center mt-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-foreground" />
-            <div className="w-px h-8 bg-border" />
-            <div className="w-2.5 h-2.5 rounded-full border-2 border-foreground" />
+          <div className="bg-secondary/50 rounded-xl p-3 mb-3 flex flex-col gap-2">
+            {ride.driverEmail && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Email:</span>
+                <p className="text-xs text-foreground break-all">{ride.driverEmail}</p>
+              </div>
+            )}
+            {ride.driverBranch && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Branch:</span>
+                <p className="text-xs text-foreground">{ride.driverBranch}</p>
+              </div>
+            )}
+            {ride.driverYear && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Year:</span>
+                <p className="text-xs text-foreground">{ride.driverYear}</p>
+              </div>
+            )}
+            {canSeePhone && resolvedDriverPhone ? (
+              <div className="flex items-start gap-2 pt-1 border-t border-border">
+                <span className="text-[10px] font-semibold text-primary min-w-16">Phone:</span>
+                <p className="text-xs text-primary font-semibold">{resolvedDriverPhone}</p>
+              </div>
+            ) : (
+              !isRideOwner && (
+                <div className="flex items-start gap-2 pt-1 border-t border-border">
+                  <span className="text-[10px] font-semibold text-muted-foreground min-w-16">Phone:</span>
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Once ride is accepted, phone number will be visible
+                  </p>
+                </div>
+              )
+            )}
           </div>
-          <div className="flex-1 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">{ride.from}</p>
-              <span className="text-xs text-muted-foreground">{ride.departureTime}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">{ride.to}</p>
-              <span className="text-xs text-muted-foreground">{ride.arrivalTime}</span>
-            </div>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border">
-          <div className="flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
-            <div>
-              <p className="font-bold text-sm text-foreground">{ride.pricePerSeat}</p>
-              <p className="text-[10px] text-muted-foreground">per seat</p>
+          <div className="mb-3 rounded-xl border border-border bg-secondary/40 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Car image</p>
+              {ride.carImageUrl ? (
+                <span className="text-[10px] font-medium text-primary">Uploaded</span>
+              ) : (
+                <span className="text-[10px] font-medium text-muted-foreground">No car image</span>
+              )}
+            </div>
+            {ride.carImageUrl ? (
+              <div className="relative">
+                <img
+                  src={ride.carImageUrl}
+                  alt={`${ride.carModel} car preview`}
+                  className="w-full h-36 object-cover rounded-lg border border-border"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFullImageUrl(ride.carImageUrl);
+                    setShowFullImage(true);
+                  }}
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-lg transition-colors"
+                  title="View full image"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border bg-background/60">
+                <p className="text-xs text-muted-foreground">Car image will appear here when uploaded.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-start gap-3 mb-4">
+            <div className="flex flex-col items-center mt-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-foreground" />
+              <div className="w-px h-8 bg-border" />
+              <div className="w-2.5 h-2.5 rounded-full border-2 border-foreground" />
+            </div>
+            <div className="flex-1 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">{ride.from}</p>
+                <span className="text-xs text-muted-foreground">{ride.departureTime}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">{ride.to}</p>
+                <span className="text-xs text-muted-foreground">{ride.arrivalTime}</span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-muted-foreground" />
-            <div>
-              <p className="font-bold text-sm text-foreground">{ride.seats}</p>
-              <p className="text-[10px] text-muted-foreground">seats</p>
+
+          <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border">
+            <div className="flex items-center gap-1.5">
+              <div>
+                <p className="font-bold text-sm text-foreground">{formatRupeePrice(ride.pricePerSeat)}</p>
+                <p className="text-[10px] text-muted-foreground">per seat</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-            <div>
-              <p className="font-bold text-sm text-foreground">{ride.eta}</p>
-              <p className="text-[10px] text-muted-foreground">ETA</p>
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-muted-foreground" />
+              <div>
+                <p className="font-bold text-sm text-foreground">{ride.seats}</p>
+                <p className="text-[10px] text-muted-foreground">seats</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              <div>
+                <p className="font-bold text-sm text-foreground">{ride.eta}</p>
+                <p className="text-[10px] text-muted-foreground">ETA</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
 
       <div className="mx-4 mb-4 md:mx-auto md:max-w-[86rem] md:mt-5">
@@ -644,13 +735,36 @@ const RideDetail = () => {
             </div>
           </div>
         ) : !request ? (
-          <button
-            type="button"
-            onClick={handleRequest}
-            className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-semibold text-sm hover:bg-primary/90 transition-colors"
-          >
-            Request This Ride
-          </button>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            {availability && availability.kind !== "available" && (
+              <div
+                className={`mb-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold shadow-sm ${availability.kind === "last_seat"
+                  ? "border-amber-200 bg-amber-50/80 text-amber-900"
+                  : "border-rose-200 bg-rose-50/80 text-rose-900"
+                  }`}
+              >
+                <span className="text-[10px] uppercase tracking-[0.16em] opacity-80">
+                  {availability.badgeLabel}
+                </span>
+                <span className="h-1 w-1 rounded-full bg-current/40" />
+                <span>{availability.headline}</span>
+              </div>
+            )}
+            {availability?.kind === "expired" && (
+              <p className="mb-3 text-xs text-muted-foreground">{availability.subtext}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleRequest}
+              disabled={availability ? !availability.canRequest : false}
+              className={`w-full rounded-2xl py-4 font-semibold text-sm transition-colors ${availability?.canRequest === false
+                ? "cursor-not-allowed border border-border bg-background text-muted-foreground opacity-80"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
+                }`}
+            >
+              {requestCtaLabel}
+            </button>
+          </div>
         ) : (
           <div className="bg-card rounded-2xl p-4 border border-border">
             <div className="flex items-center gap-3">
@@ -663,8 +777,8 @@ const RideDetail = () => {
                   {request.status === "pending"
                     ? "Waiting for driver to respond"
                     : request.status === "approved"
-                    ? "Booking approved. Contact unlocked."
-                    : "Request was declined"}
+                      ? "Booking approved. Contact unlocked."
+                      : "Request was declined"}
                 </p>
               </div>
             </div>
@@ -679,8 +793,8 @@ const RideDetail = () => {
                 {isCancellingRequest
                   ? "Cancelling..."
                   : request.status === "pending"
-                  ? "Cancel request"
-                  : "Cancel booking"}
+                    ? "Cancel request"
+                    : "Cancel booking"}
               </button>
             )}
           </div>
@@ -709,11 +823,10 @@ const RideDetail = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm font-semibold text-foreground truncate">{req.requesterName}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                            req.status === "pending" ? "bg-yellow-500/10 text-yellow-700" :
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${req.status === "pending" ? "bg-yellow-500/10 text-yellow-700" :
                             req.status === "approved" ? "bg-primary/10 text-primary" :
-                            "bg-destructive/10 text-destructive"
-                          }`}>
+                              "bg-destructive/10 text-destructive"
+                            }`}>
                             {req.status === "pending" ? "Pending" : req.status === "approved" ? "Approved" : "Rejected"}
                           </span>
                         </div>
@@ -876,18 +989,16 @@ const RideDetail = () => {
               <button
                 type="button"
                 onClick={() => setFeedbackKind("review")}
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  feedbackKind === "review" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
-                }`}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${feedbackKind === "review" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
+                  }`}
               >
                 Review
               </button>
               <button
                 type="button"
                 onClick={() => setFeedbackKind("report")}
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  feedbackKind === "report" ? "bg-destructive text-destructive-foreground" : "bg-secondary text-foreground"
-                }`}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${feedbackKind === "report" ? "bg-destructive text-destructive-foreground" : "bg-secondary text-foreground"
+                  }`}
               >
                 Report
               </button>
@@ -902,11 +1013,10 @@ const RideDetail = () => {
                       key={value}
                       type="button"
                       onClick={() => setFeedbackRating(value)}
-                      className={`h-10 w-10 rounded-xl border text-sm font-semibold ${
-                        feedbackRating === value
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background text-foreground"
-                      }`}
+                      className={`h-10 w-10 rounded-xl border text-sm font-semibold ${feedbackRating === value
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground"
+                        }`}
                     >
                       {value}
                     </button>
@@ -926,17 +1036,16 @@ const RideDetail = () => {
               type="button"
               onClick={handleSubmitFeedback}
               disabled={isSubmittingFeedback}
-              className={`mt-3 w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-60 ${
-                feedbackKind === "review"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-destructive text-destructive-foreground"
-              }`}
+              className={`mt-3 w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-60 ${feedbackKind === "review"
+                ? "bg-primary text-primary-foreground"
+                : "bg-destructive text-destructive-foreground"
+                }`}
             >
               {isSubmittingFeedback
                 ? "Submitting..."
                 : feedbackKind === "review"
-                ? "Submit review"
-                : "Submit report"}
+                  ? "Submit review"
+                  : "Submit report"}
             </button>
           </div>
         )}
@@ -952,11 +1061,10 @@ const RideDetail = () => {
                   type="button"
                   key={seat}
                   onClick={() => setSeatsToRequest(seat)}
-                  className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-colors ${
-                    seatsToRequest === seat
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground"
-                  }`}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-colors ${seatsToRequest === seat
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-foreground"
+                    }`}
                 >
                   {seat}
                 </button>

@@ -7,6 +7,7 @@ import {
   type UserAccount,
 } from "@/lib/auth";
 import { ApiError, apiRequest } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 import { useSocket } from "@/context/SocketContext";
 
 export interface RideRequest {
@@ -260,6 +261,10 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
         });
 
         setRides((prev) => [response.data, ...prev]);
+        trackEvent("post_ride", {
+          seats: response.data.seats,
+          price_per_seat: response.data.pricePerSeat,
+        });
         refreshInBackground();
         return { success: true, message: response.message || "Ride posted successfully" };
       } catch (error) {
@@ -323,6 +328,10 @@ export const RideProvider = ({ children }: { children: React.ReactNode }) => {
         });
 
         setRequests((prev) => mergeRequests([response.data, ...prev]));
+        trackEvent("request_ride", {
+          ride_id: rideId,
+          seats_requested: seatsRequested,
+        });
         refreshInBackground();
         return { success: true, message: response.message || "Ride request sent successfully" };
       } catch (error) {

@@ -5,6 +5,7 @@ import { RideModel } from "../models/Ride.model.js";
 import { RideRequestModel } from "../models/RideRequest.model.js";
 import { RideFeedbackModel } from "../models/RideFeedback.model.js";
 import { UserModel } from "../models/User.model.js";
+import { awardFeedbackPoints } from "../services/wallet.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/appError.js";
 import { createFeedbackSchema } from "../validators/feedback.validator.js";
@@ -87,6 +88,12 @@ export const createRideFeedback = asyncHandler(async (req: AuthenticatedRequest,
     rating: parsed.kind === "review" ? parsed.rating : undefined,
     comment: parsed.comment,
   });
+
+  try {
+    await awardFeedbackPoints(req.user.id, String(ride._id), String(feedback._id));
+  } catch {
+    // Feedback should remain successful even if wallet crediting fails.
+  }
 
   res.status(201).json({
     success: true,

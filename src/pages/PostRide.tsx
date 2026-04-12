@@ -3,7 +3,9 @@ import { ArrowLeft, MapPin, Calendar, Clock, Car, IndianRupee, Camera, X } from 
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
+import { apiRequest } from "@/lib/api";
 import { useRideContext } from "@/context/RideContext";
+import { useCoinReward } from "@/context/CoinRewardContext";
 import {
   fetchPlaceSuggestions,
   getBrowserCurrentLocation,
@@ -12,6 +14,7 @@ import {
   reverseGeocode,
   type PlaceSuggestion,
 } from "@/lib/location";
+import { trackEvent } from "@/lib/analytics";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -19,6 +22,7 @@ const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const PostRide = () => {
   const navigate = useNavigate();
   const { addRide } = useRideContext();
+  const { showCoinReward } = useCoinReward();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [fromSuggestions, setFromSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -194,12 +198,49 @@ const PostRide = () => {
     setIsSubmitting(false);
 
     if (!result.success) {
+      trackEvent("post_ride_error", {
+        from,
+        to,
+        date,
+        time,
+        error: result.message,
+      });
       toast.error(result.message);
       return;
     }
 
-    toast.success("Ride posted successfully!");
-    navigate("/home");
+    trackEvent("post_ride", {
+      from,
+      to,
+      date,
+      time,
+      seats,
+      price: Number(price),
+      car_model: carModel,
+      has_repeat: repeatDays.length > 0,
+    });
+    
+    try {
+      const walletRes = await apiRequest<{ data: { weeklyEarned: number; weeklyCap: number; daily: { postRewardsUsed: number; postRewardsLimit: number } } }>("/wallet/me");
+      
+      const willExceedDaily = walletRes.data.daily.postRewardsUsed >= walletRes.data.daily.postRewardsLimit;
+      const willExceedWeekly = walletRes.data.weeklyEarned + 20 > walletRes.data.weeklyCap;
+
+      if (willExceedDaily || willExceedWeekly) {
+        toast.success("Ride posted successfully");
+        navigate("/home");
+      } else {
+        showCoinReward({
+          coins: 20,
+          reason: "Coins will be credited to your wallet when a rider joins your ride",
+          pending: true,
+          onComplete: () => navigate("/home"),
+        });
+      }
+    } catch {
+      toast.success("Ride posted successfully");
+      navigate("/home");
+    }
   };
 
   return (
@@ -475,6 +516,15 @@ const PostRide = () => {
                   {method}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-2 flex items-center justify-between">
+              <p className="text-[11px] text-primary font-medium flex items-center gap-1.5">
+                ✨ Earn <span className="font-bold">20 Fah Coins</span> for hosting this ride!
+              </p>
+              <span className="text-[10px] bg-primary/10 px-2 py-0.5 rounded-full text-primary font-bold">~₹2.00</span>
             </div>
           </div>
 

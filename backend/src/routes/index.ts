@@ -8,6 +8,7 @@ import uploadRoutes from "./upload.routes.js";
 import feedbackRoutes from "./feedback.routes.js";
 import notificationRoutes from "./notification.routes.js";
 import maintenanceRoutes from "./maintenance.routes.js";
+import walletRoutes from "./wallet.routes.js";
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use("/v1/upload", uploadRoutes);
 router.use("/v1/feedback", feedbackRoutes);
 router.use("/v1/notifications", notificationRoutes);
 router.use("/v1/maintenance", maintenanceRoutes);
+router.use("/v1/wallet", walletRoutes);
 
 export default router;

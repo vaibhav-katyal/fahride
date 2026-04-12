@@ -1,30 +1,61 @@
 import { useEffect, useState, useRef, type KeyboardEvent } from "react";
 import { Search, MapPin, SlidersHorizontal, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import HomeLiveMap from "@/components/HomeLiveMap";
 import RideCard from "@/components/RideCard";
 import WhatsAppCommunityButton from "@/components/WhatsAppCommunityButton";
 import { useRideContext } from "@/context/RideContext";
+import { useCoinReward } from "@/context/CoinRewardContext";
 import { reverseGeocode, geocodeLocationName, haversineDistanceKm } from "@/lib/location";
+import { getRideAvailabilityState } from "@/lib/rideStatus";
+import { trackEvent } from "@/lib/analytics";
 import { toast } from "sonner";
+import FahCoinBanner from "@/components/FahCoinBanner";
 
 type Coordinate = [number, number];
 
 const Home = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { showCoinReward } = useCoinReward();
   const { rides, sendRequest, requests, currentUser } = useRideContext();
   const [showFilters, setShowFilters] = useState(false);
   const [appliedMinSeats, setAppliedMinSeats] = useState(0);
   const [appliedMaxPricePerMile, setAppliedMaxPricePerMile] = useState<number | null>(null);
   const [draftMinSeats, setDraftMinSeats] = useState(0);
   const [draftMaxPricePerMile, setDraftMaxPricePerMile] = useState<number | null>(null);
+
+  // Check for signup rewards
+  useEffect(() => {
+    const state = location.state as { signupReward?: boolean; referralReward?: boolean } | null;
+    if (state?.signupReward) {
+      // Clear the state so it doesn't trigger again on refresh
+      window.history.replaceState({}, document.title);
+      
+      showCoinReward({
+        coins: 5,
+        reason: "Welcome to FahRide! You earned coins for signing up.",
+        onComplete: () => {
+          if (state.referralReward) {
+            // Add a small delay for better visual separation between popups
+            setTimeout(() => {
+              showCoinReward({
+                coins: 10,
+                reason: "You earned extra coins for using a friend's referral code!",
+              });
+            }, 300);
+          }
+        }
+      });
+    }
+  }, [location.state, showCoinReward]);
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const [seatsToRequest, setSeatsToRequest] = useState(1);
   const [currentLocation, setCurrentLocation] = useState<Coordinate | null>(null);
   const [locationLabel, setLocationLabel] = useState("Detecting your location...");
   const [isLocating, setIsLocating] = useState(true);
-  const [desktopSplit, setDesktopSplit] = useState(66);
+  const [desktopSplit, setDesktopSplit] = useState(60);
   const [isDraggingSplit, setIsDraggingSplit] = useState(false);
   const rideCoordinatesRef = useRef<Map<string, Coordinate>>(new Map());
   const [, setGeocodingTrigger] = useState(0); // Trigger re-renders when coords are cached
@@ -69,6 +100,12 @@ const Home = () => {
   }, []);
 
   const filteredRides = rides.filter((ride) => {
+    const availability = getRideAvailabilityState(ride);
+    const shouldShowRide = availability.canRequest || availability.kind === "full";
+    if (!shouldShowRide) {
+      return false;
+    }
+
     const priceValue = Number.parseFloat(ride.pricePerSeat.replace(/[^\d.]/g, ""));
     const seatMatch = appliedMinSeats === 0 || ride.seats >= appliedMinSeats;
     const priceMatch = appliedMaxPricePerMile === null || priceValue <= appliedMaxPricePerMile;
@@ -148,12 +185,11 @@ const Home = () => {
   };
 
   const activeFilterCount = Number(appliedMinSeats > 0) + Number(appliedMaxPricePerMile !== null);
-  const showTwoColumnRides = desktopSplit <= 58;
 
   useEffect(() => {
     if (!isDraggingSplit) return;
 
-    const clampSplit = (value: number) => Math.min(78, Math.max(44, value));
+    const clampSplit = (value: number) => Math.min(72, Math.max(52, value));
 
     const handleMouseMove = (event: MouseEvent) => {
       if (window.innerWidth < 768) return;
@@ -185,22 +221,22 @@ const Home = () => {
   const handleDividerKeyboard = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      setDesktopSplit((prev) => Math.max(44, prev - 2));
+      setDesktopSplit((prev) => Math.max(52, prev - 2));
     }
 
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      setDesktopSplit((prev) => Math.min(78, prev + 2));
+      setDesktopSplit((prev) => Math.min(72, prev + 2));
     }
 
     if (event.key === "Home") {
       event.preventDefault();
-      setDesktopSplit(44);
+      setDesktopSplit(52);
     }
 
     if (event.key === "End") {
       event.preventDefault();
-      setDesktopSplit(78);
+      setDesktopSplit(72);
     }
   };
 
@@ -248,7 +284,7 @@ const Home = () => {
           style={{ ["--desktop-split" as string]: `${desktopSplit}%` }}
         >
           {/* Live map view */}
-          <section className="w-full md:flex md:min-h-0 md:w-[var(--desktop-split)] md:flex-col md:gap-4">
+          <section className="w-full md:flex md:h-full md:min-h-0 md:w-[var(--desktop-split)] md:flex-col md:gap-4">
             <div className="relative h-64 overflow-hidden bg-secondary md:h-[52vh] md:min-h-[380px] md:rounded-[28px] md:border md:border-border/70 md:shadow-[0_30px_80px_rgba(15,23,42,0.14)]">
               <HomeLiveMap 
                 currentLocation={currentLocation} 
@@ -310,17 +346,23 @@ const Home = () => {
             role="separator"
             aria-label="Resize map and ride panels"
             aria-orientation="vertical"
-            aria-valuemin={44}
-            aria-valuemax={78}
+            aria-valuemin={52}
+            aria-valuemax={72}
             aria-valuenow={Math.round(desktopSplit)}
           >
             <span className={`h-14 w-1 rounded-full bg-slate-400 ${isDraggingSplit ? "bg-slate-700" : ""}`} />
           </button>
 
           {/* Nearby Rides */}
-          <section className="w-full px-4 pt-6 md:flex md:min-h-0 md:w-[calc(100%-var(--desktop-split))] md:flex-col md:rounded-[28px] md:border md:border-border/70 md:bg-card/75 md:px-4 md:pt-4 md:pb-4 md:shadow-[0_24px_54px_rgba(15,23,42,0.09)] md:backdrop-blur-xl">
-            <div className="mb-4 flex items-center justify-between md:mb-4 md:border-b md:border-border/70 md:pb-3">
-              <h2 className="text-lg font-bold text-foreground md:text-xl">Nearby Rides</h2>
+          <section className="w-full px-4 pt-6 md:flex md:h-full md:min-h-0 md:w-[calc(100%-var(--desktop-split))] md:flex-col md:overflow-hidden md:rounded-[28px] md:border md:border-border md:bg-background md:px-5 md:pt-5 md:pb-4 md:shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+            {/* Mobile-only coin banner */}
+            <FahCoinBanner dismissibleId="home_mobile_banner" className="mb-6 md:hidden" />
+            
+            <div className="mb-4 flex items-center justify-between md:sticky md:top-0 md:z-[2] md:-mx-1 md:mb-4 md:border-b md:border-border/80 md:bg-background md:px-1 md:pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-foreground md:text-xl">Nearby Rides</h2>
+                <p className="mt-1 text-[11px] text-muted-foreground">Only live available rides with full route, time and fare details</p>
+              </div>
               <button
                 type="button"
                 onClick={handleFilterClick}
@@ -336,16 +378,12 @@ const Home = () => {
               </button>
             </div>
 
-            <div
-              className={`md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1 ${
-                showTwoColumnRides ? "flex flex-col gap-4 md:grid md:grid-cols-2" : "flex flex-col gap-4"
-              }`}
-            >
+            <div className="flex flex-col gap-4 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-3 md:pb-4 md:[scrollbar-width:thin] md:[scrollbar-color:rgba(100,116,139,0.75)_transparent] md:[&::-webkit-scrollbar]:w-2 md:[&::-webkit-scrollbar-track]:bg-transparent md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-slate-300 md:[&::-webkit-scrollbar-thumb:hover]:bg-slate-400">
               {/* Show skeleton loaders while location is syncing */}
               {isLocating ? (
                 <>
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="animate-pulse rounded-xl border border-border bg-card p-4 space-y-3">
+                    <div key={i} className="animate-pulse rounded-2xl border border-border bg-card p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3 flex-1">
                           <div className="w-10 h-10 rounded-full bg-muted" />
@@ -374,6 +412,7 @@ const Home = () => {
                     const request = requests.find(
                       (r) => r.rideId === ride.id && r.requesterEmail === currentUser.email
                     );
+
                     return (
                       <RideCard
                         key={ride.id}
@@ -393,8 +432,8 @@ const Home = () => {
                   })}
 
                   {filteredRides.length === 0 && (
-                    <p className="py-6 text-center text-sm text-muted-foreground md:rounded-xl md:border md:border-dashed md:border-border md:bg-card/60 md:col-span-2">
-                      No rides match current filters.
+                    <p className="py-6 text-center text-sm text-muted-foreground md:rounded-xl md:border md:border-dashed md:border-border md:bg-card/60">
+                      No available nearby rides right now. Try changing filters or check again in a bit.
                     </p>
                   )}
                 </>
@@ -445,10 +484,21 @@ const Home = () => {
                     const result = await sendRequest(selectedRideId, seatsToRequest);
                     setSelectedRideId(null);
                     if (result.success) {
+                      trackEvent("join_ride", {
+                        ride_id: selectedRideId,
+                        seats_requested: seatsToRequest,
+                        driver_name: ride?.driverName,
+                        from: ride?.from,
+                        to: ride?.to,
+                      });
                       toast.success(
                         `Requested ${seatsToRequest} ${seatsToRequest === 1 ? "seat" : "seats"} from ${ride?.driverName}!`
                       );
                     } else {
+                      trackEvent("join_ride_error", {
+                        ride_id: selectedRideId,
+                        error: result.message,
+                      });
                       toast.error(result.message);
                     }
                   }}

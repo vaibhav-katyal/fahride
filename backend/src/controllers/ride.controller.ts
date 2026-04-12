@@ -7,6 +7,7 @@ import { createManyNotifications } from "../services/notification.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/appError.js";
 import { generateETag, checkETag } from "../utils/etag.js";
+import { parseRideDateTime } from "../utils/rideTime.js";
 import { createRideSchema, updateRideSchema } from "../validators/ride.validator.js";
 import type { AuthenticatedRequest } from "../middlewares/auth.middleware.js";
 
@@ -123,6 +124,10 @@ export const createRide = asyncHandler(async (req: AuthenticatedRequest, res: Re
   }
 
   const parsed = createRideSchema.parse(req.body);
+  const departureAt = parseRideDateTime(parsed.date, parsed.departureTime);
+  if (!departureAt || departureAt.getTime() <= Date.now()) {
+    throw new AppError("Ride must be scheduled in the future", 400);
+  }
 
   const owner = await UserModel.findById(req.user.id).lean();
   if (!owner) {
@@ -197,6 +202,13 @@ export const updateRide = asyncHandler(async (req: AuthenticatedRequest, res: Re
   if (parsed.carImageUrl !== undefined) ride.carImageUrl = parsed.carImageUrl;
   if (parsed.paymentMethod !== undefined) ride.paymentMethod = parsed.paymentMethod;
   if (parsed.repeatDays !== undefined) ride.repeatDays = parsed.repeatDays;
+
+  const nextDate = parsed.date ?? ride.date;
+  const nextDepartureTime = parsed.departureTime ?? ride.departureTime;
+  const nextDepartureAt = parseRideDateTime(nextDate, nextDepartureTime);
+  if (!nextDepartureAt || nextDepartureAt.getTime() <= Date.now()) {
+    throw new AppError("Ride must be scheduled in the future", 400);
+  }
 
   if (parsed.seats !== undefined) {
     ride.seatsTotal = parsed.seats;

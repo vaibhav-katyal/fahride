@@ -6,9 +6,11 @@ import { RideRequestModel, type RideRequestDocument } from "../models/RideReques
 import { UserModel } from "../models/User.model.js";
 import { createNotification, createManyNotifications } from "../services/notification.service.js";
 import { emitToUser } from "../services/socket.service.js";
+import { MIN_JOIN_LEAD_MINUTES, awardRideApprovalPoints, reverseRideApprovalPointsOnCancel } from "../services/wallet.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/appError.js";
 import { generateETag, checkETag } from "../utils/etag.js";
+import { parseRideDateTime } from "../utils/rideTime.js";
 import { createRideRequestSchema, updateRequestStatusSchema } from "../validators/ride.validator.js";
 
 const paramToString = (value: unknown) => (typeof value === "string" ? value : "");
@@ -66,6 +68,31 @@ export const requestRide = asyncHandler(async (req: AuthenticatedRequest, res: R
 
   if (String(ride.owner) === req.user.id) {
     throw new AppError("You cannot request your own ride", 400);
+  }
+
+  const approvedBookings = await RideRequestModel.find({
+    requester: req.user.id,
+    status: "approved",
+  })
+    .select("ride")
+    .populate({
+      path: "ride",
+      select: "date departureTime status",
+    })
+    .lean();
+
+  const hasActiveBooking = approvedBookings.some((booking) => {
+    const rideDoc = booking.ride as { date?: string; departureTime?: string; status?: string } | undefined;
+    if (!rideDoc || rideDoc.status !== "active" || !rideDoc.date || !rideDoc.departureTime) {
+      return false;
+    }
+
+    const departureAt = parseRideDateTime(rideDoc.date, rideDoc.departureTime);
+    return Boolean(departureAt && departureAt.getTime() > Date.now());
+  });
+
+  if (hasActiveBooking) {
+    throw new AppError("You already have an active approved booking", 409);
   }
 
   if (ride.seatsAvailable < parsed.seatsRequested) {
@@ -232,6 +259,21 @@ export const updateRequestStatus = asyncHandler(async (req: AuthenticatedRequest
   }
 
   if (status === "approved") {
+    const rideForTiming = await RideModel.findById(request.ride).select("date departureTime").lean();
+    if (!rideForTiming?.date || !rideForTiming.departureTime) {
+      throw new AppError("Ride not found", 404);
+    }
+
+    const departureAt = parseRideDateTime(rideForTiming.date, rideForTiming.departureTime);
+    if (!departureAt || departureAt.getTime() <= Date.now()) {
+      throw new AppError("Only future rides can be approved", 400);
+    }
+
+    const minimumJoinTime = Date.now() + MIN_JOIN_LEAD_MINUTES * 60 * 1000;
+    if (departureAt.getTime() < minimumJoinTime) {
+      throw new AppError(`Ride should be at least ${MIN_JOIN_LEAD_MINUTES} minutes away for approval`, 400);
+    }
+
     const ride = await RideModel.findOneAndUpdate(
       {
         _id: request.ride,
@@ -253,6 +295,19 @@ export const updateRequestStatus = asyncHandler(async (req: AuthenticatedRequest
   await request.save();
 
   const ride = await RideModel.findById(request.ride).lean();
+
+  if (status === "approved") {
+    try {
+      await awardRideApprovalPoints(
+        String(request.rideOwner),
+        String(request.requester),
+        String(request.ride),
+        String(request._id)
+      );
+    } catch {
+      // Booking flow should not fail when reward crediting fails.
+    }
+  }
 
   await createNotification({
     recipient: String(request.requester),
@@ -311,6 +366,12 @@ export const cancelMyBooking = asyncHandler(async (req: AuthenticatedRequest, re
         $inc: { seatsAvailable: request.seatsRequested },
       }
     );
+
+    try {
+      await reverseRideApprovalPointsOnCancel(String(request._id), req.user.id);
+    } catch {
+      // Cancellation should still proceed even if reward reversal fails.
+    }
   }
 
   const ride = await RideModel.findById(request.ride).lean();

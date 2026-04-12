@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { ZodError } from "zod";
 import { AppError } from "../utils/appError.js";
 
 export const notFound = (req: Request, res: Response, next: NextFunction) => {
@@ -17,6 +18,16 @@ export const errorHandler = (
     if (err instanceof Error) {
       console.error("   Stack:", err.stack);
     }
+  }
+
+  if (err instanceof ZodError) {
+    const validationMessage = err.errors.map((issue) => issue.message).join("; ");
+    res.status(400).json({
+      success: false,
+      message: validationMessage || "Validation failed",
+      errors: err.errors,
+    });
+    return;
   }
 
   const appError = err instanceof AppError ? err : new AppError("Internal server error", 500);

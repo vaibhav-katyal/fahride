@@ -1,13 +1,19 @@
+import { useEffect } from "react";
 import { ArrowLeft, CarFront } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import RideCard from "@/components/RideCard";
 import { useRideContext } from "@/context/RideContext";
+import { trackPageView } from "@/lib/analytics";
 
 const MyRides = () => {
   const navigate = useNavigate();
   const { rides, currentUser } = useRideContext();
   const currentUserId = (currentUser as { id?: string }).id;
+
+  useEffect(() => {
+    trackPageView("/my-rides");
+  }, []);
 
   const myPostedRides = rides.filter(
     (ride) => (currentUserId && ride.ownerId === currentUserId) || ride.driverEmail === currentUser.email

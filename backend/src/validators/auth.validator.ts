@@ -11,6 +11,7 @@ export const requestSignupOtpSchema = z.object({
   password: z.string().min(6),
   branch: z.string().min(1),
   year: z.string().min(1),
+  referralCode: z.string().trim().toUpperCase().min(4).max(20).optional(),
 });
 
 export const requestLoginOtpSchema = z.object({
